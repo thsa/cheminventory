@@ -40,7 +40,7 @@ it will work with the new entity relationship model.
 
 ### How to run the service
 ```bash
-java -jar inventory.jar -c test_config.txt
+java -jar inventoryserver.jar -c test_config.txt
 ```
 
 ### How to access the service
