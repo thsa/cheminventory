@@ -50,9 +50,9 @@ http://localhost:8092/?what=help
 ```
 An example for a little more complex query would be
 ```
-http://localhost:8092/?what=query&smiles=c1ccccc1O&current_amount=>5000&s.name=ABC
+http://localhost:8092/?what=query&smiles=c1ccccc1O&b.current_amount=>5&s.name=ABC
 ```
-This will retrieve all bottles from supplier 'ABC' with a phenol substructure and a current amount above 5000 mg.
+This will retrieve all bottles from supplier 'ABC' with a phenol substructure and a current amount above 5 g or ml.
 
 
 ### License
