@@ -1,0 +1,18 @@
+#!/bin/bash
+
+### Install mysql-server, if not done already:
+# sudo apt install mysql-server
+
+echo Creating database 'cheminventory' in MySQL database.
+sudo mysql -uroot -e "CREATE DATABASE cheminventory;"
+
+echo Creating user 'inventory' on MySQL database.
+read -s -p "Password for user 'inventory':" PASSWORD
+sudo mysql -uroot -e "CREATE USER inventory IDENTIFIED BY '$PASSWORD';"
+sudo mysql -uroot -e "GRANT ALL PRIVILEGES ON cheminventory.* TO inventory;"
+
+echo Creating tables with test data in database 'cheminventory'
+mysql -u inventory -p$PASSWORD < create_db_with_test_data.sql
+
+# Alternatively, you may just create al tables and leave them empty:
+# mysql -u inventory -p$PASSWORD < create_db.sql
