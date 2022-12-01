@@ -21,54 +21,97 @@ package org.openmolecules.inventory;
 import java.sql.*;
 
 public class DatabaseConnector {
-	private Connection mConnection;
-	private String mConnectString,mUser,mPassword;
-	private boolean mDriverRegistered;
-	private String mRecentUpdate;
+	private static final long CONNECTION_CHECK_DELAY = 60000;
 
-	public DatabaseConnector(String connectString, String user, String password) {
-		mConnectString = connectString;
-		if (mConnectString.startsWith("jdbc:"))
-			mConnectString = mConnectString.substring(5);
+	private static boolean sDriverRegistered;
+	private static String sConnectString;
+	private static DatabaseConnector sInstance;
+
+	private Connection mConnection;
+	private String mUser,mPassword;
+	private String mRecentUpdate;
+	private long mLastKnownValidConnection;
+
+	public static void setConnectString(String connectString) {
+		sConnectString = connectString;
+		if (sConnectString.startsWith("jdbc:"))
+			sConnectString = sConnectString.substring(5);
+	}
+
+	public static boolean isAuthorized(String user, String password) {
+		if (sConnectString != null && sDriverRegistered) {
+			try {
+				Connection c = DriverManager.getConnection("jdbc:"+sConnectString, user, password);
+				c.close();
+				return true;
+			}
+			catch (Exception e) {}
+		}
+		return false;
+	}
+
+	public static DatabaseConnector getInstance(String user, String password) {
+		if (sInstance == null)
+			sInstance = new DatabaseConnector(user, password);
+
+		return sInstance;
+	}
+
+	public static DatabaseConnector getInstance() {
+		return sInstance;
+	}
+
+	private DatabaseConnector(String user, String password) {
 		mUser = user;
 		mPassword = password;
 	}
 
 	public boolean ensureConnection() {
 		try {
-			if (mConnection != null
-			 && mConnection.isClosed())
-				mConnection = null;
+			if (mConnection != null) {
+				long now = System.currentTimeMillis();
+				if (mLastKnownValidConnection< now - CONNECTION_CHECK_DELAY) {
+					if (mConnection.isValid(5))
+						mLastKnownValidConnection = now;
+					else
+						mConnection = null;
+					}
+				}
 			}
 		catch (SQLException sqle) {
 			mConnection = null;
 			}
 
 		if (mConnection == null) {
-			if (mConnectString.startsWith("mysql:")) {
+			if (sConnectString.startsWith("mysql:")) {
 				try {
-					if (registerMySQLDriver())
-						mConnection = DriverManager.getConnection("jdbc:"+mConnectString, mUser, mPassword);
+					if (registerMySQLDriver()) {
+						mConnection = DriverManager.getConnection("jdbc:" + sConnectString, mUser, mPassword);
+						mLastKnownValidConnection = System.currentTimeMillis();
+					}
 				}
 				catch (Exception e) {
 					System.out.println("Exception when connecting to MySQL database: "+ e.getMessage());
 				}
 			}
 
-			if (mConnectString.startsWith("postgresql:")) {
+			if (sConnectString.startsWith("postgresql:")) {
 				try {
-					if (registerPostgreSQLDriver())
-						mConnection = DriverManager.getConnection("jdbc:"+mConnectString, mUser, mPassword);
+					if (registerPostgreSQLDriver()) {
+						mConnection = DriverManager.getConnection("jdbc:" + sConnectString, mUser, mPassword);
+						mLastKnownValidConnection = System.currentTimeMillis();
+					}
 				}
 				catch (Exception e) {
 					System.out.println("Exception when connecting to PostgreSQL database: "+ e.getMessage());
 				}
 			}
 		}
-		return true;
+		return mConnection != null;
 	}
 
 	private boolean registerMySQLDriver() {
+		sDriverRegistered = true;
 		return true;    // no driver registration needed anymore
 /*		if (!mDriverRegistered) {
 			try {
@@ -83,16 +126,16 @@ public class DatabaseConnector {
 */	}
 
 	private boolean registerPostgreSQLDriver() {
-		if (!mDriverRegistered) {
+		if (!sDriverRegistered) {
 			try {
 				Class.forName("org.postgresql.Driver").newInstance();
-				mDriverRegistered = true;
+				sDriverRegistered = true;
 			}
 			catch (Exception e) {
 				System.out.println("Exception when registering PostgreSQL driver: "+ e.getMessage());
 			}
 		}
-		return mDriverRegistered;
+		return sDriverRegistered;
 	}
 
 	public Connection getConnection() {

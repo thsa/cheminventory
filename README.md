@@ -19,14 +19,17 @@ It can be be used as virtual host of a web server to be accessible under a web-s
 application that let's end users store, edit and search bottles of chemicals. These client
 applications are not part of this project, yet.
 
+
 ### Dependencies
 *ChemInventory* requires JRE 8 or newer, OpenChemLib, SimpleFramework, and MySQL (or ProstgreSQL).
 All dependencies are included with this project in the lib folder.
+
 
 ### How to download the project
 ```bash
 git clone https://github.com/thsa/cheminventory.git
 ```
+
 
 ### Create Inventory database, insert test data
 Provided, you have installed MySQL-Server, run the following command on a Linux computer
@@ -43,10 +46,12 @@ check the comments in the create_db file.
 ./build_all
 ```
 
+
 ### How to run the service with the test database
 ```bash
 java -jar inventoryserver.jar -c test_config.txt
 ```
+
 
 ### How to access the service
 To display the help page open a web browser and access the server's URL

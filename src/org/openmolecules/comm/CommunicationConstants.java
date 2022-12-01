@@ -31,9 +31,13 @@ public interface CommunicationConstants {
     String KEY_REQUEST = "what";
     String KEY_QUERY = "query";
     String KEY_APP_NAME = "appname";
+    String KEY_USER = "user";
+    String KEY_PASSWORD = "password";
 
     String REQUEST_NEW_SESSION = "new";
     String REQUEST_END_SESSION = "end";
     String REQUEST_GET_STATUS = "status";
     String REQUEST_RUN_QUERY = "query";
+    String REQUEST_LOGIN = "login";
+    String REQUEST_LOGOUT = "logout";
 	}

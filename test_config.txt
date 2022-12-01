@@ -10,13 +10,17 @@ db_password = inventory
 
 # The server engine keeps all chemical structure information in memory to allow for fast structure searches.
 # Alphanumerical column data is also kept in memory, if it shall be retrievable or usable for queries.
-# The following comma separated list starts with the SQL table name and then contains two entries for
-# every compound table column that shall be known to this server. There are four mandatory structure columns,
-# which are not listed hare, but must exist in the compound table: idcode, idcooords, fragfp, skelspheres.
-# The 'compoundTable' property contains a comma separated list with full table name as
-# '<db_name>.<table_name> <table_alias>', followed by two entries per table column: '[<type>]<display_column_name>'
-# and '<database_column_name>'. Every table must contain exactly one primary key column.
-compoundTable = cheminventory.compound c, \
+# The following comma separated list starts with the display name and the SQL table name of the compound table.
+# Then it contains two entries for every alphanumerical column of the compound table, which shall be known to
+# this server. In addition to the columns listed here, the database's compound table must contain four mandatory
+# text columns, which contain the necessary encoded chemical structure information:
+# idcode, idcooords, fragfp, skelspheres.
+# The format of the following, comma separated, text string is as follows:
+# The 1st entry is the display name of the compound table, i.e. the name shown in the user interface.
+# The 2nd entry is the full SQL table name with alias as '<db_name>.<table_name> <table_alias>'.
+# Then every table column is specified by two entries: '[<type>]<display_column_name>' and
+# '<database_column_name>'. Every table must contain exactly one primary key column.
+compoundTable = Compound, cheminventory.compound c, \
  [pk]Compound ID, compound_id, \
  [text]Compound Name, name, \
  [text]CAS No, cas_no, \
@@ -28,7 +32,7 @@ compoundTable = cheminventory.compound c, \
 # the compound table and it may reference additional tables keeping details of locations, suppliers, etc.
 # For every referenced table the bottle table must have a type in the format '[fk:<table_alias>.<column_name_pk>]'
 # that describes the references table and its primary key column.
-bottleTable = cheminventory.bottle b, \
+bottleTable = Bottle, cheminventory.bottle b, \
  [pk]Bottle ID, bottle_id, \
  [text]Barcode, barcode, \
  [text]Catalog No, catalog_no, \
@@ -42,23 +46,23 @@ bottleTable = cheminventory.bottle b, \
  [text]Comment, comment, \
  [fk:c.compound_id]Compound ID, compound_id, \
  [fk:s.supplier_id]Supplier ID, supplier_id, \
- [fk:l.location_id]Supplier ID, location_id
+ [fk:l.location_id]Location ID, location_id
 
 # In addition to the bottle table there may be a small number of support tables, which contain
 # detail information that is referenced by a bottle row, e.g. supplier or location data.
 supportTableCount = 2
 
 # Support tables are defined as compound and bottle tables above. They must not contain foreign key columns.
-supportTable1 = cheminventory.supplier s, \
+supportTable1 = Supplier, cheminventory.supplier s, \
  [pk]Supplier ID, supplier_id, \
  [text]Supplier Name, name
 
-supportTable2 = cheminventory.location l, \
+supportTable2 = Location, cheminventory.location l, \
  [pk]Location ID, location_id, \
  [text]Location Name, name
 
-# The following list contains all table.column_name(s) of standard result rows, which shall be returned
-# by the server on standard structure queries or non-structure queries.
+# The following list contains all table_alias.column_name(s) of non-structure result rows,
+# which shall be returned as default by the server on structure queries or non-structure queries.
 # In addition to the columns listed here, returned result rows will also contain four structure columns,
 # which are mandatory and predefined as: idcode, idcooords, fragfp, skelspheres.
 resultTable = \

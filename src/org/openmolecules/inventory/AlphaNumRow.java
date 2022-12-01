@@ -36,6 +36,10 @@ public class AlphaNumRow {
 		return mData[column];
 	}
 
+	public byte[][] getRowData() {
+		return mData;
+	}
+
 	public void setFloat(float f, int column) {
 		mFloat[column] = f;
 	}

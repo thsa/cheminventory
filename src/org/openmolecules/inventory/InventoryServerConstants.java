@@ -28,30 +28,25 @@ public interface InventoryServerConstants {
 	String LOG_FILE_NAME = INSTALLATION_PATH + "log/inventory_"+System.currentTimeMillis()+".log";
 
 	String REQUEST_HELP = "help";
+	String REQUEST_ERM = "erm";
 	String REQUEST_TEMPLATE = "template";
-	String QUERY_STRUCTURE_SEARCH_SPEC = "ssspec";
+	String REQUEST_INSERT = "insert";
+	String REQUEST_UPDATE = "update";
+	String REQUEST_DELETE = "delete";
 
-	String QUERY_AMOUNT = "amount";
-	String QUERY_PRICE_LIMIT = "price";
+	String QUERY_STRUCTURE_SEARCH_SPEC = "ssspec";
 	String QUERY_MAX_ROWS = "maxrows";
-	String QUERY_MOLWEIGHT = "molweight";
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// the following are the names of individual put/get parameters if the client doesn't use a query object //
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	String PARAMETER_WITH_STRUCTURE = "withidcode"; // whether to include structure columns in text result; default is false
 
-	String PARAMETER_BB_ID = "id";
 	String PARAMETER_SMILES = "smiles";
 	String PARAMETER_SEARCH_TYPE = "searchType";
 	String PARAMETER_THRESHOLD = "threshold";
-	String PARAMETER_AMOUNT = "amount";
-	String PARAMETER_PRICE_LIMIT = "price";
-	String PARAMETER_MAX_ROWS = "maxrows";
-	String PARAMETER_MOLWEIGHT = "molweight";
+	String PARAMETER_TOKEN = "token";
+	String PARAMETER_TABLE = "table"; // for insert/update/delete or to define alphanum single table query instead of default
 	String SEARCH_TYPE_SSS = "substructure";
 	String SEARCH_TYPE_SIM = "similarity";
-
-	// Molport specific non-query parameter names
-	String PARAMETER_VERIFIED_AMOUNT = "verifiedAmount";
 }

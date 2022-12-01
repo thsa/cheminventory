@@ -22,9 +22,9 @@ import com.actelion.research.chem.StructureSearch;
 import com.actelion.research.chem.StructureSearchController;
 import com.actelion.research.chem.StructureSearchSpecification;
 
-import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.TreeMap;
 
@@ -47,10 +47,23 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 	public InventorySearchEngine(InMemoryData data, ResultBuilder resultBuilder) {
 		mData = data;
 		mResultBuilder = resultBuilder;
-		compileQueryColunms();
+		compileQueryColumns();
 		}
 
-	private void compileQueryColunms() {
+	public String getTableSpecification() {
+		StringBuilder erm = new StringBuilder();
+		for (AlphaNumTable table:mData.getTables()) {
+			erm.append(table.getSpecification());
+			erm.append('\n');
+			}
+		return erm.toString();
+		}
+
+	public InMemoryData getInMemoryData() {
+		return mData;
+		}
+
+	private void compileQueryColumns() {
 		mQueryColumnMap = new TreeMap<>();
 		for (AlphaNumTable table: mData.getTables()) {
 			for (int column=0; column<table.getColumnCount(); column++) {
@@ -82,21 +95,24 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 		return createSearchTask(query).getMatchingRowBytes();
 		}
 
+	/**
+	 * @param query
+	 * @return
+	 * @throws SearchEngineException
+	 */
 	public String searchIDs(TreeMap<String,Object> query) throws SearchEngineException {
 		return createSearchTask(query).getMatchingBottleIDs();
 		}
 
-//	public String getMatchingRowsAsString(TreeMap<String,Object> query, boolean includeStructureColumns) throws SearchEngineException {
-//		return createSearchTask(query).getMatchingRowString(includeStructureColumns);
-//		}
-
-	public int printResultTable(TreeMap<String,Object> query, boolean includeStructureColumns, PrintStream body) throws SearchEngineException, IOException {
-		return createSearchTask(query).printResultRows(body, includeStructureColumns);
+	public int printResultTable(TreeMap<String,Object> query, PrintStream body) throws SearchEngineException {
+		return createSearchTask(query).printResultRows(body);
 		}
 
 	private SearchTask createSearchTask(TreeMap<String,Object> query) throws SearchEngineException {
 		ArrayList<QueryColumn> queryColumns = new ArrayList<>();
 		ArrayList<String> queryCriterions = new ArrayList<>();
+
+		AlphaNumTable table = mData.getTable((String)query.get(PARAMETER_TABLE));
 
 		for (String key:mQueryColumnMap.keySet()) {
 			String value = (String)query.get(key);
@@ -115,10 +131,16 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 		catch (NumberFormatException nfe) {}
 
 		StructureSearchSpecification ssSpec = (StructureSearchSpecification)query.get(QUERY_STRUCTURE_SEARCH_SPEC);
-		if (ssSpec == null)
+		if (table == null && ssSpec == null)
 			throw new SearchEngineException("No structure search defined.");
+		if (table != null && ssSpec != null)
+			ssSpec = null;
 
-		return new SearchTask(ssSpec, maxRows, queryColumns.toArray(new QueryColumn[0]), queryCriterions.toArray(new String[0]));
+		// default is true
+		boolean includeStructureColumns = !"false".equals(query.get(PARAMETER_WITH_STRUCTURE));
+
+		return new SearchTask(table, ssSpec, includeStructureColumns, maxRows,
+				queryColumns.toArray(new QueryColumn[0]), queryCriterions.toArray(new String[0]));
 		}
 
 	public byte[] getTemplate() {
@@ -127,6 +149,8 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 
 	private class SearchTask implements StructureSearchController {
 		private StructureSearchSpecification mSSSpec;
+		private AlphaNumTable mSearchedSingleTable;   // in case of alphanumerical search on one table only
+		private boolean mIncludeStructureColumns;
 		private int mMaxRows;
 		private String[] mQueryCriterion;
 		private float[] mQueryLow,mQueryHigh;
@@ -134,18 +158,30 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 		private boolean[] mQueryTextIsNot;
 		private int[] mQueryColumnIndex,mQueryColumnType,mForeignKeyIndex;
 
-		public SearchTask(StructureSearchSpecification structureSearchSpec, int maxRows, QueryColumn[] queryColumn, String[] queryCriteria) {
+		/**
+		 * This constructs a standard structure search task on the joined tables with predefined result structure
+		 * @param searchedSingleTable null, if using a standard structure search on the predefined result structure
+		 * @param structureSearchSpec null, if search is alphanumerical on a single table
+		 * @param maxRows
+		 * @param queryColumn
+		 * @param queryCriteria
+		 */
+		public SearchTask(AlphaNumTable searchedSingleTable, StructureSearchSpecification structureSearchSpec,
+		                  boolean includeStructureColumns, int maxRows, QueryColumn[] queryColumn, String[] queryCriteria) {
 			mSSSpec = structureSearchSpec;
+			mSearchedSingleTable = searchedSingleTable;
+			mIncludeStructureColumns = includeStructureColumns;
 			mMaxRows = maxRows;
 			mQueryCriterion = queryCriteria;
 
 			mQueryColumnIndex = new int[mQueryCriterion.length];
 			mQueryColumnType = new int[mQueryCriterion.length];
 			mForeignKeyIndex = new int[mQueryCriterion.length];
+			AlphaNumTable table = mSearchedSingleTable != null ? mSearchedSingleTable : mData.getBottleTable();
 			for (int i=0; i<mQueryCriterion.length; i++) {
 				mQueryColumnIndex[i] = queryColumn[i].getColumnIndex();
 				mQueryColumnType[i] = queryColumn[i].getColumnType();
-				mForeignKeyIndex[i] = mData.getBottleTable().getForeignKeyIndex(queryColumn[i].getTable().getAliasName());
+				mForeignKeyIndex[i] = table.getForeignKeyIndex(queryColumn[i].getTable().getAliasName());
 			}
 
 			mQueryLow = new float[mQueryCriterion.length];
@@ -195,7 +231,8 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 
 		@Override
 		public boolean rowQualifies(int row) {
-			AlphaNumRow bottleRow = mData.getBottleTable().getRow(row);
+			AlphaNumTable table = mSearchedSingleTable != null ? mSearchedSingleTable : mData.getBottleTable();
+			AlphaNumRow bottleRow = table.getRow(row);
 			for (int i=0; i<mQueryCriterion.length; i++) {
 				if (mQueryColumnType[i] == COLUMN_TYPE_NUM) {
 					float value = (mForeignKeyIndex[i] == -1) ? bottleRow.getFloat(mQueryColumnIndex[i])
@@ -228,6 +265,20 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 			return true;
 			}
 
+		/**
+		 * Compiles a list of matching rows for an alphanumerical search on one table
+		 * @return
+		 */
+		private int[] getSingleTableMatchingRowIndexes() {
+			int[] hitIndex = new int[mSearchedSingleTable.getRowCount()];
+			int count = 0;
+			for (int i = 0; i<mSearchedSingleTable.getRowCount(); i++)
+			    if (rowQualifies(i))
+					hitIndex[count++] = i;
+
+			return Arrays.copyOf(hitIndex, count);
+		}
+
 		public byte[][][] getMatchingRowBytes() throws SearchEngineException {
 			if (mSSSpec != null) {
 				StructureSearch search = new StructureSearch(mSSSpec, mData, this, null, null);
@@ -242,6 +293,11 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 					throw new SearchEngineException("Structure search hit limit exceeded.\nTry to make your search more specific.");
 
 				return mResultBuilder.buildResult(hitIndexes);
+				}
+
+			if (mSearchedSingleTable != null) {
+				int[] hitIndexes = getSingleTableMatchingRowIndexes();
+				return new SingleTableResultBuilder(mSearchedSingleTable).buildResult(hitIndexes, mIncludeStructureColumns);
 				}
 
 			return null;
@@ -272,39 +328,46 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 				return result.toString();
 				}
 
+			if (mSearchedSingleTable != null) {
+				int[] hitIndexes = getSingleTableMatchingRowIndexes();
+				int pkColumn = mSearchedSingleTable.getPrimaryKeyColumn();
+				StringBuilder result = new StringBuilder();
+				for (int hitIndex:hitIndexes) {
+					result.append(new String(mSearchedSingleTable.getRow(hitIndex).getData(pkColumn)));
+					result.append("\n");
+					}
+
+				return result.toString();
+				}
+
 			return null;
 			}
 
-/*		public String getMatchingRowString(boolean includeStructureColumns) throws SearchEngineException {
-			StructureSearch search = new StructureSearch(mSSSpec, mData, this, null, null);
-			search.setMatchLimit(Math.min(mMaxRows, MAX_SSS_MATCHES), Math.min(mMaxRows, MAX_NON_SSS_MATCHES));
-			int[] hitIndexes = search.start();
-			if (hitIndexes == null)
-				return null;
+		public int printResultRows(PrintStream body) throws SearchEngineException {
+			if (mSSSpec != null) {
+				StructureSearch search = new StructureSearch(mSSSpec, mData, this, null, null);
+				search.setMatchLimit(Math.min(mMaxRows, MAX_SSS_MATCHES), Math.min(mMaxRows, MAX_NON_SSS_MATCHES));
+				int[] hitIndexes = search.start();
+				if (hitIndexes == null)
+					return 0;
 
-			if (MAX_SSS_MATCHES != 0 && mSSSpec.isSubstructureSearch() && hitIndexes.length > MAX_SSS_MATCHES)
-				throw new SearchEngineException("Sub-structure search hit limit exceeded.\nTry to make your search more specific.");
-			if (MAX_NON_SSS_MATCHES != 0 && !mSSSpec.isSubstructureSearch() && hitIndexes.length > MAX_NON_SSS_MATCHES)
-				throw new SearchEngineException("Structure search hit limit exceeded.\nTry to make your search more specific.");
+				if (MAX_SSS_MATCHES != 0 && mSSSpec.isSubstructureSearch() && hitIndexes.length > MAX_SSS_MATCHES)
+					throw new SearchEngineException("Sub-structure search hit limit exceeded.\nTry to make your search more specific.");
+				if (MAX_NON_SSS_MATCHES != 0 && !mSSSpec.isSubstructureSearch() && hitIndexes.length > MAX_NON_SSS_MATCHES)
+					throw new SearchEngineException("Structure search hit limit exceeded.\nTry to make your search more specific.");
 
-			return mResultBuilder.buildResultString(hitIndexes, includeStructureColumns);
-			}*/
+				mResultBuilder.printResult(hitIndexes, body, mIncludeStructureColumns);
 
-		public int printResultRows(PrintStream body, boolean includeStructureColumns) throws IOException,SearchEngineException {
-			StructureSearch search = new StructureSearch(mSSSpec, mData, this, null, null);
-			search.setMatchLimit(Math.min(mMaxRows, MAX_SSS_MATCHES), Math.min(mMaxRows, MAX_NON_SSS_MATCHES));
-			int[] hitIndexes = search.start();
-			if (hitIndexes == null)
-				return 0;
+				return hitIndexes.length;
+				}
 
-			if (MAX_SSS_MATCHES != 0 && mSSSpec.isSubstructureSearch() && hitIndexes.length > MAX_SSS_MATCHES)
-				throw new SearchEngineException("Sub-structure search hit limit exceeded.\nTry to make your search more specific.");
-			if (MAX_NON_SSS_MATCHES != 0 && !mSSSpec.isSubstructureSearch() && hitIndexes.length > MAX_NON_SSS_MATCHES)
-				throw new SearchEngineException("Structure search hit limit exceeded.\nTry to make your search more specific.");
+			if (mSearchedSingleTable != null) {
+				int[] hitIndexes = getSingleTableMatchingRowIndexes();
+				new SingleTableResultBuilder(mSearchedSingleTable).printResult(hitIndexes, body, mIncludeStructureColumns);
+				return hitIndexes.length;
+				}
 
-			mResultBuilder.printResult(hitIndexes, body, includeStructureColumns);
-
-			return hitIndexes.length;
+			return 0;
 			}
 		}
 	}

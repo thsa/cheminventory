@@ -18,7 +18,6 @@
 
 package org.openmolecules.inventory;
 
-import com.actelion.research.chem.descriptor.DescriptorHandlerLongFFP512;
 import com.actelion.research.chem.descriptor.DescriptorHandlerSkeletonSpheres;
 
 public class CompoundRow extends AlphaNumRow {
@@ -50,11 +49,11 @@ public class CompoundRow extends AlphaNumRow {
 		return mSkelSpheres;
 	}
 
-	public void setStructure(String idcode, String coords, String ffp, String skelspheres) {
+	public void setStructure(String idcode, String coords, long[] ffp, String encodedFFP, String encodedSkelSpheres) {
 		mIDCode = (idcode == null) ? null : idcode.getBytes();
 		mCoords = (idcode == null || coords == null) ? null : coords.getBytes();
-		mFFPBytes = (idcode == null || ffp == null) ? null : ffp.getBytes();
-		mFFP = (mFFPBytes == null) ? null : DescriptorHandlerLongFFP512.getDefaultInstance().decode(ffp);
-		mSkelSpheres = (idcode == null || skelspheres == null) ? null : DescriptorHandlerSkeletonSpheres.getDefaultInstance().decode(skelspheres);
+		mFFPBytes = (idcode == null || encodedFFP == null) ? null : encodedFFP.getBytes();
+		mFFP = ffp;
+		mSkelSpheres = (idcode == null || encodedSkelSpheres == null) ? null : DescriptorHandlerSkeletonSpheres.getDefaultInstance().decode(encodedSkelSpheres);
 	}
 }

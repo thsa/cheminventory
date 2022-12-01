@@ -130,8 +130,19 @@ public class InMemoryData implements ConfigurationKeys,StructureSearchDataSource
 		return true;
 	}
 
+	/**
+	 * @return array of all tables in this order: support tables, compound table, bottle table
+	 */
 	public AlphaNumTable[] getTables() {
 		return mAllTables;
+	}
+
+	public AlphaNumTable getTable(String tableName) {
+		for (AlphaNumTable table:mAllTables)
+			if (table.getName().equals(tableName) || table.getLongName().equals(tableName))
+				return table;
+
+		return null;
 	}
 
 	public AlphaNumTable getBottleTable() {
@@ -150,7 +161,8 @@ public class InMemoryData implements ConfigurationKeys,StructureSearchDataSource
 		if (!initialize())
 			return false;
 
-		DatabaseConnector connector = new DatabaseConnector(mConfig.getProperty(CONNECT_STRING), mConfig.getProperty(DATABASE_USER), mConfig.getProperty(DATABASE_PASSWORD));
+		DatabaseConnector.setConnectString(mConfig.getProperty(CONNECT_STRING));
+		DatabaseConnector connector = DatabaseConnector.getInstance(mConfig.getProperty(DATABASE_USER), mConfig.getProperty(DATABASE_PASSWORD));
 		for (AlphaNumTable table:mAllTables) {
 			if (!table.loadData(connector)) {
 				System.out.println("Could not load data of table "+table.getName()+".");

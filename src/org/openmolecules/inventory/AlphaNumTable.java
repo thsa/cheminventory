@@ -27,7 +27,7 @@ import java.util.ArrayList;
 import java.util.TreeMap;
 
 public class AlphaNumTable implements ConfigurationKeys {
-	private String mTableLongName, mTableAliasName;
+	private String mSpecification, mTableDisplayName, mTableLongName, mTableAliasName;
 	private String[] mColumnTitle;
 	private String[] mColumnName;
 	private ForeignKey[] mForeignKey;
@@ -45,23 +45,26 @@ public class AlphaNumTable implements ConfigurationKeys {
 		if (tableDef == null || tableDef.length() == 0)
 			return false;
 
+		mSpecification = tableDef;
+
 		String[] entry = tableDef.split(",");
 		for (int i=0; i<entry.length; i++)
 			entry[i] = entry[i].trim();
 
-		int index = entry[0].indexOf(' ');
+		int index = entry[1].indexOf(' ');
 		if (index == -1) {
-			System.out.println("Missing table short name in: " + entry[0]);
+			System.out.println("Missing table short name in: " + entry[1]);
 			return false;
 		}
-		mTableLongName = entry[0].substring(0, index);
-		mTableAliasName = entry[0].substring(index+1);
+		mTableDisplayName = entry[0];
+		mTableLongName = entry[1].substring(0, index);
+		mTableAliasName = entry[1].substring(index+1);
 		if (mTableLongName.indexOf('.') == -1) {
 			System.out.println("Missing database name as part of table name: " + mTableLongName);
 			return false;
 		}
 
-		int columnCount = entry.length / 2;
+		int columnCount = entry.length / 2 - 1;
 
 		mPrimaryKeyColumn = -1;
 		mColumnTitle = new String[columnCount];
@@ -69,7 +72,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 		mColumnType = new int[columnCount];
 
 		mForeignKeyCount = 0;
-		for (int i=1; i<entry.length-1; i+=2)
+		for (int i=2; i<entry.length; i+=2)
 			if (entry[i].startsWith(COLUMN_TYPES[COLUMN_TYPE_FK]))
 				mForeignKeyCount++;
 
@@ -79,7 +82,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 		int currentColumnIndex = mForeignKeyCount;
 
 		// Foreign key column come first!
-		for (int i=1; i<entry.length-1; i+=2) {
+		for (int i=2; i<entry.length; i+=2) {
 			if (entry[i].charAt(0) != '[') {
 				System.out.println("No column type defined: " + entry[i]);
 				return false;
@@ -126,6 +129,10 @@ public class AlphaNumTable implements ConfigurationKeys {
 		}
 
 		return true;
+	}
+
+	public String getSpecification() {
+		return mSpecification;
 	}
 
 	public boolean validateForeignKeys(AlphaNumTable[] allTables) {
@@ -257,6 +264,161 @@ public class AlphaNumTable implements ConfigurationKeys {
 		sql.append(mTableLongName);
 
 		return sql.toString();
+	}
+
+	protected boolean insertRow(TreeMap<String,String> columnValueMap, int[] newPrimaryKeyHolder) {
+		StringBuilder sql = new StringBuilder("INSERT INTO ");
+		sql.append(mTableLongName);
+		sql.append(' ');
+
+		int count = 0;
+		for (int i=0; i<mColumnName.length; i++) {
+			String value = columnValueMap.get(mColumnName[i]);
+			if (value != null) {
+				sql.append(count == 0 ? '(' : ",");
+				sql.append(mColumnName[i]);
+			}
+		}
+
+		if (count == 0)
+			return false;
+
+		sql.append(") VALUES ");
+
+		count = 0;
+		for (int i=0; i<mColumnName.length; i++) {
+			String value = columnValueMap.get(mColumnName[i]);
+			if (value != null) {
+				sql.append(count == 0 ? '(' : ",");
+				if (mColumnType[i] == COLUMN_TYPE_TEXT
+				 || mColumnType[i] == COLUMN_TYPE_ID
+				 || mColumnType[i] == COLUMN_TYPE_DATE) {
+					sql.append('\'');
+					sql.append(value);
+					sql.append('\'');
+				}
+				else {
+					sql.append(value);
+				}
+			}
+			count++;
+		}
+
+		sql.append(")");
+
+		if (runUpdateSQL(sql.toString(), newPrimaryKeyHolder)) {
+			AlphaNumRow row = new AlphaNumRow(getColumnCount());
+			byte[] primaryKey = Integer.toString(newPrimaryKeyHolder[0]).getBytes();
+			row.setData(mPrimaryKeyColumn, primaryKey);
+			for (String columnName:columnValueMap.keySet()) {
+				int column = getColumnIndex(columnName);
+				String value = columnValueMap.get(columnName);
+				if (value != null) {
+					row.setData(column, value.getBytes());
+					if (mColumnType[column] == COLUMN_TYPE_NUM) {
+						try {
+							row.setFloat(Float.parseFloat(value), column);
+						}
+						catch (NumberFormatException nfe) {}
+					}
+				}
+			}
+			mRowMap.put(primaryKey, row);
+			mRowList.add(row);
+			return true;
+		}
+		return false;
+	}
+
+	protected boolean updateRow(TreeMap<String,String> columnValueMap, String primaryKey) {
+		StringBuilder sql = new StringBuilder("UPDATE ");
+		sql.append(mTableLongName);
+		sql.append(" SET");
+
+		int count = 0;
+		for (int i=0; i<mColumnName.length; i++) {
+			String value = columnValueMap.get(mColumnName[i]);
+			if (value != null) {
+				sql.append(count == 0 ? ' ' : ',');
+				sql.append(mColumnName[i]);
+				sql.append('=');
+				if (mColumnType[i] == COLUMN_TYPE_TEXT
+				 || mColumnType[i] == COLUMN_TYPE_ID
+				 || mColumnType[i] == COLUMN_TYPE_DATE) {
+					sql.append('\'');
+					sql.append(value);
+					sql.append('\'');
+				}
+				else {
+					sql.append(value);
+				}
+				count++;
+			}
+		}
+
+		if (count == 0)
+			return false;
+
+		sql.append(" WHERE ");
+		sql.append(mColumnName[mPrimaryKeyColumn]);
+		sql.append('=');
+		sql.append(primaryKey);
+
+		if (runUpdateSQL(sql.toString(), null)) {
+			AlphaNumRow row = mRowMap.get(primaryKey.getBytes());
+			for (String columnName:columnValueMap.keySet()) {
+				int column = getColumnIndex(columnName);
+				String value = columnValueMap.get(columnName);
+				if (value != null) {
+					row.setData(column, value.getBytes());
+					if (mColumnType[column] == COLUMN_TYPE_NUM) {
+						try {
+							row.setFloat(Float.parseFloat(value), column);
+						}
+						catch (NumberFormatException nfe) {}
+					}
+				}
+			}
+			return true;
+		}
+		return false;
+	}
+
+	protected boolean deleteRow(String primaryKey) {
+		StringBuilder sql = new StringBuilder("DELETE FROM ");
+		sql.append(mTableLongName);
+		sql.append(" WHERE ");
+		sql.append(mColumnName[mPrimaryKeyColumn]);
+		sql.append('=');
+		sql.append(primaryKey);
+		if (runUpdateSQL(sql.toString(), null)) {
+			AlphaNumRow row = mRowMap.remove(primaryKey.getBytes());
+			if (row != null)
+				mRowList.remove(row);
+			return true;
+		}
+		return false;
+	}
+
+	protected boolean runUpdateSQL(String sql, int[] newPrimaryKeyHolder) {
+		try {
+			DatabaseConnector connector = DatabaseConnector.getInstance();
+			if (connector.ensureConnection()) {
+				Statement stmt = connector.getConnection().createStatement();
+				stmt.executeUpdate(sql, newPrimaryKeyHolder == null ? Statement.NO_GENERATED_KEYS : Statement.RETURN_GENERATED_KEYS);
+				if (newPrimaryKeyHolder != null) {
+					ResultSet rs = stmt.getGeneratedKeys();
+					if (rs.next())
+						newPrimaryKeyHolder[0] = rs.getInt(1);
+				}
+				stmt.close();
+				return true;
+			}
+		}
+		catch (SQLException e) {
+			System.out.println("Exception changing table: "+ e.getMessage());
+		}
+		return false;
 	}
 
 	protected void addOptionalTableNamesToSQL(StringBuilder sql) {
