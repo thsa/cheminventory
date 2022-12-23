@@ -150,7 +150,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 			    createErrorResponse("Invalid token.");
 			    return;
 		    }
-		    String tableName = getRequestText(PARAMETER_TABLE);
+		    String tableName = getRequestText(QUERY_PARAMETER_TABLE);
 		    if (tableName == null) {
 			    createErrorResponse("Missing table name.");
 			    return;
@@ -294,7 +294,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 	    String smiles = getRequestText(PARAMETER_SMILES);
 	    String searchType = getRequestText(PARAMETER_SEARCH_TYPE);
 	    String threshold = getRequestText(PARAMETER_THRESHOLD);
-	    String tableName = getRequestText(PARAMETER_TABLE);
+	    String tableName = getRequestText(QUERY_PARAMETER_TABLE);
 		String withStructure = getRequestText(PARAMETER_WITH_STRUCTURE);
 
 		AlphaNumTable table = mSearchEngine.getInMemoryData().getTable(tableName);
@@ -304,7 +304,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 	    query.put(PARAMETER_WITH_STRUCTURE, withStructure == null ? "false" : withStructure);
 
 		if (table != null)
-			query.put(PARAMETER_TABLE, tableName);
+			query.put(QUERY_PARAMETER_TABLE, tableName);
 
 		for (String queryColumnName:mSearchEngine.getQueryColumnNames()) {
 		    String value = getRequestText(queryColumnName);

@@ -23,12 +23,12 @@ public interface ConfigurationKeys {
 
 	String[] COLUMN_TYPES = { "[text]", "[id]", "[num]", "[date]", "[pk]", "[fk:" };
 	String[] SQL_TYPE = { "varchar(255)", "varchar(255) NOT NULL UNIQUE", "float", "date", "int NOT NULL AUTO_INCREMENT", "int" };
-	int COLUMN_TYPE_TEXT = 0;
-	int COLUMN_TYPE_ID = 1;   // A text identifier that should be unique for the entire table
-	int COLUMN_TYPE_NUM = 2;
-	int COLUMN_TYPE_DATE = 3;
-	int COLUMN_TYPE_PK = 4;   // An integer value serving as primary key
-	int COLUMN_TYPE_FK = 5;   // An integer value serving as foreign key
+	int COLUMN_TYPE_TEXT = 0; // Text values stored as 'varchar(255)' in the database
+	int COLUMN_TYPE_ID = 1;   // Optional: may serve as identifier; stored as 'varchar(255) NOT NULL UNIQUE'
+	int COLUMN_TYPE_NUM = 2;  // Numerical values stored as 'float' in the database
+	int COLUMN_TYPE_DATE = 3; // Date values stored as 'date' in the database
+	int COLUMN_TYPE_PK = 4;   // Mandatory once per table: An integer value serving as primary key
+	int COLUMN_TYPE_FK = 5;   // Zero or more times per table: An integer value serving as foreign key
 
 	String MAX_STRUCTURE_SEARCH_HITS = "maxStructureSearchHits";
 	String MAX_NON_STRUCTURE_SEARCH_HITS = "maxNonStructureSearchHits";

@@ -37,7 +37,6 @@ public class SingleTableResultBuilder implements ConfigurationKeys {
 	}
 
 	public byte[][][] buildResult(int[] hitIndexes, boolean includeStructureColumns) {
-		includeStructureColumns &= (mTable instanceof CompoundTable);
 		int structureColumnCount = includeStructureColumns ? CompoundTable.STRUCTURE_COLUMN_TITLE.length : 0;
 
 		byte[][][] result = new byte[hitIndexes.length+1][structureColumnCount + mTable.getColumnCount()][];
@@ -49,23 +48,21 @@ public class SingleTableResultBuilder implements ConfigurationKeys {
 			result[0][structureColumnCount + column] = mTable.getColumnTitle(column).getBytes();
 
 		for (int i=0; i<hitIndexes.length; i++) {
+			AlphaNumRow row = mTable.getRow(hitIndexes[i]);
 			if (includeStructureColumns) {
-				CompoundRow row = (CompoundRow)mTable.getRow(hitIndexes[i]);
-				result[i+1][0] = row.getIDCode();
-				result[i+1][1] = row.getCoords();
-				result[i+1][2] = row.getFFPBytes();
+				result[i+1][0] = ((CompoundRow)row).getIDCode();
+				result[i+1][1] = ((CompoundRow)row).getCoords();
+				result[i+1][2] = ((CompoundRow)row).getFFPBytes();
 			}
-			byte[][] row = mTable.getRow(i).getRowData();
-			for (int j=0; j<row.length; j++)
-				result[i+1][structureColumnCount+j] = row[j];
+			byte[][] rowData = row.getRowData();
+			for (int j=0; j<rowData.length; j++)
+				result[i+1][structureColumnCount+j] = rowData[j];
 			}
 
 		return result;
 	}
 
 	public void printResult(int[] hitIndexes, PrintStream body, boolean includeStructureColumns) {
-		includeStructureColumns &= (mTable instanceof CompoundTable);
-
 		if (includeStructureColumns) {
 			for (String title:CompoundTable.STRUCTURE_COLUMN_TITLE) {
 				body.print(title);
@@ -79,16 +76,16 @@ public class SingleTableResultBuilder implements ConfigurationKeys {
 		}
 
 		for (int hitIndex:hitIndexes) {
+			AlphaNumRow row = mTable.getRow(hitIndex);
 			if (includeStructureColumns) {
-				CompoundRow row = (CompoundRow)mTable.getRow(hitIndex);
-				body.print(new String(row.getIDCode()));
+				body.print(new String(((CompoundRow)row).getIDCode()));
 				body.print("\t");
-				body.print(new String(row.getCoords()));
+				body.print(new String(((CompoundRow)row).getCoords()));
 				body.print("\t");
-				body.print(new String(row.getFFPBytes()));
+				body.print(new String(((CompoundRow)row).getFFPBytes()));
 				body.print("\t");
 			}
-			byte[][] rowData = mTable.getRow(hitIndex).getRowData();
+			byte[][] rowData = row.getRowData();
 			for (int column=0; column<rowData.length; column++) {
 				if (rowData[column] != null)
 					body.print(new String(rowData[column]));

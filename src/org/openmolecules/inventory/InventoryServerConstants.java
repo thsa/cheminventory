@@ -35,7 +35,9 @@ public interface InventoryServerConstants {
 	String REQUEST_DELETE = "delete";
 
 	String QUERY_STRUCTURE_SEARCH_SPEC = "ssspec";
+	String QUERY_PARAMETER_TABLE = "table"; // for insert/update/delete or to define alphanum single table query instead of default
 	String QUERY_MAX_ROWS = "maxrows";
+
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// the following are the names of individual put/get parameters if the client doesn't use a query object //
@@ -46,7 +48,6 @@ public interface InventoryServerConstants {
 	String PARAMETER_SEARCH_TYPE = "searchType";
 	String PARAMETER_THRESHOLD = "threshold";
 	String PARAMETER_TOKEN = "token";
-	String PARAMETER_TABLE = "table"; // for insert/update/delete or to define alphanum single table query instead of default
 	String SEARCH_TYPE_SSS = "substructure";
 	String SEARCH_TYPE_SIM = "similarity";
 }

@@ -112,7 +112,7 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 		ArrayList<QueryColumn> queryColumns = new ArrayList<>();
 		ArrayList<String> queryCriterions = new ArrayList<>();
 
-		AlphaNumTable table = mData.getTable((String)query.get(PARAMETER_TABLE));
+		AlphaNumTable table = mData.getTable((String)query.get(QUERY_PARAMETER_TABLE));
 
 		for (String key:mQueryColumnMap.keySet()) {
 			String value = (String)query.get(key);
@@ -136,7 +136,7 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 		if (table != null && ssSpec != null)
 			ssSpec = null;
 
-		// default is true
+		// default is true (unless the query was built from URL parameters)
 		boolean includeStructureColumns = !"false".equals(query.get(PARAMETER_WITH_STRUCTURE));
 
 		return new SearchTask(table, ssSpec, includeStructureColumns, maxRows,
@@ -245,9 +245,9 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 							: bottleRow.getReferencedRow(mForeignKeyIndex[i]).getData(mQueryColumnIndex[i]);
 					boolean match = false;
 					if (value != null) {
-						for (int j=0; j<value.length-mQueryText.length+1; j++) {
+						for (int j=0; j<value.length-mQueryText[i].length+1; j++) {
 							match = true;
-							for (int k=0; k<mQueryText.length; k++) {
+							for (int k=0; k<mQueryText[i].length; k++) {
 								if (value[j+k] != mQueryText[i][k]) {
 									match = false;
 									break;
