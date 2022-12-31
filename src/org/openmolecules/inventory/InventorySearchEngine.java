@@ -156,6 +156,7 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 		private float[] mQueryLow,mQueryHigh;
 		private byte[][] mQueryText;
 		private boolean[] mQueryTextIsNot;
+		private boolean[] mQueryTextEquals;
 		private int[] mQueryColumnIndex,mQueryColumnType,mForeignKeyIndex;
 
 		/**
@@ -187,6 +188,7 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 			mQueryLow = new float[mQueryCriterion.length];
 			mQueryHigh = new float[mQueryCriterion.length];
 			mQueryText = new byte[mQueryCriterion.length][];
+			mQueryTextEquals = new boolean[mQueryCriterion.length];
 			mQueryTextIsNot = new boolean[mQueryCriterion.length];
 			for (int i=0; i<mQueryCriterion.length; i++) {
 				if (queryColumn[i].getColumnType() == COLUMN_TYPE_NUM)
@@ -226,6 +228,10 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 				criterion = criterion.substring(1);
 				mQueryTextIsNot[criterionIndex] = true;
 			}
+			if (criterion.startsWith("=")) {
+				criterion = criterion.substring(1);
+				mQueryTextEquals[criterionIndex] = true;
+			}
 			mQueryText[criterionIndex] = criterion.getBytes();
 		}
 
@@ -256,6 +262,8 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 							if (match)
 								break;
 						}
+					if (match && mQueryTextEquals[i] && value.length != mQueryText[i].length)
+						match = false;
 					if (match == mQueryTextIsNot[i])
 						return false;
 					}

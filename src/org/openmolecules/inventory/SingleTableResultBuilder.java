@@ -37,6 +37,7 @@ public class SingleTableResultBuilder implements ConfigurationKeys {
 	}
 
 	public byte[][][] buildResult(int[] hitIndexes, boolean includeStructureColumns) {
+		includeStructureColumns &= (mTable instanceof CompoundTable);
 		int structureColumnCount = includeStructureColumns ? CompoundTable.STRUCTURE_COLUMN_TITLE.length : 0;
 
 		byte[][][] result = new byte[hitIndexes.length+1][structureColumnCount + mTable.getColumnCount()][];
@@ -55,14 +56,15 @@ public class SingleTableResultBuilder implements ConfigurationKeys {
 				result[i+1][2] = ((CompoundRow)row).getFFPBytes();
 			}
 			byte[][] rowData = row.getRowData();
-			for (int j=0; j<rowData.length; j++)
-				result[i+1][structureColumnCount+j] = rowData[j];
+			for (int column=0; column<rowData.length; column++)
+				result[i+1][structureColumnCount+column] = rowData[column];
 			}
 
 		return result;
 	}
 
 	public void printResult(int[] hitIndexes, PrintStream body, boolean includeStructureColumns) {
+		includeStructureColumns &= (mTable instanceof CompoundTable);
 		if (includeStructureColumns) {
 			for (String title:CompoundTable.STRUCTURE_COLUMN_TITLE) {
 				body.print(title);
