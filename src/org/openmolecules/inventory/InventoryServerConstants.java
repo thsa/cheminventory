@@ -29,14 +29,20 @@ public interface InventoryServerConstants {
 
 	String REQUEST_HELP = "help";
 	String REQUEST_ERM = "erm";
+	String REQUEST_ROW = "row";
 	String REQUEST_TEMPLATE = "template";
 	String REQUEST_INSERT = "insert";
 	String REQUEST_UPDATE = "update";
 	String REQUEST_DELETE = "delete";
 
 	String QUERY_STRUCTURE_SEARCH_SPEC = "ssspec";
-	String QUERY_PARAMETER_TABLE = "table"; // for insert/update/delete or to define alphanum single table query instead of default
 	String QUERY_MAX_ROWS = "maxrows";
+
+	String PARAMETER_TABLE = "table"; // for insert/update/delete or to define alphanum single table query instead of default
+	String PARAMETER_TOKEN = "token";
+	String PARAMETER_PRIMARY_KEY = "pk";
+
+	String RESPONSE_OK = "OK";
 
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,7 +53,6 @@ public interface InventoryServerConstants {
 	String PARAMETER_SMILES = "smiles";
 	String PARAMETER_SEARCH_TYPE = "searchType";
 	String PARAMETER_THRESHOLD = "threshold";
-	String PARAMETER_TOKEN = "token";
 	String SEARCH_TYPE_SSS = "substructure";
 	String SEARCH_TYPE_SIM = "similarity";
 }

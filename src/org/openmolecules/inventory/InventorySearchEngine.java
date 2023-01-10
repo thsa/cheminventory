@@ -112,7 +112,7 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 		ArrayList<QueryColumn> queryColumns = new ArrayList<>();
 		ArrayList<String> queryCriterions = new ArrayList<>();
 
-		AlphaNumTable table = mData.getTable((String)query.get(QUERY_PARAMETER_TABLE));
+		AlphaNumTable table = mData.getTable((String)query.get(PARAMETER_TABLE));
 
 		for (String key:mQueryColumnMap.keySet()) {
 			String value = (String)query.get(key);

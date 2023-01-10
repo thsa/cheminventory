@@ -82,8 +82,12 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 				  + "    Within a query any text column in the database may be used as additional criterion:\n"
 				  + "    key '<textcol>', where <textcol> is the database table alias followed by '.' and the column name\n"
 				  + "      value: text string, which must be a substring of a row's column content for the row to be a match.\n"
+				  + "             The value may be preceded by '=', '!', or '!=' (equals, does not contain, is not equal).\n"
 				  + "      Valid values for <textcol>: "+getQueryColumnNames(COLUMN_TYPE_TEXT)+"\n"
 			      + "      (specify mixture of <numcol> and <textcol> key-value pairs to define matching rows)\n\n"
+				  + "  value 'row': Returns one row of the defined table.\n"
+				  + "    key 'table': SQL table name.\n"
+				  + "    key 'pk': the row's primary key.\n\n"
 				  + "  value 'login': Returns a token, which is needed for inserting, changing, or deleting rows in the database.\n"
 				  + "    key 'user': Valid user-ID.\n"
 				  + "    key 'password': Valid password.\n"
@@ -138,6 +142,40 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 	    	return;
 		    }
 
+	    if (what.equals(REQUEST_ROW)) {
+		    String tableName = getRequestText(PARAMETER_TABLE);
+		    if (tableName == null) {
+			    createErrorResponse("Missing table name.");
+			    return;
+		    }
+		    String pk = getRequestText(PARAMETER_PRIMARY_KEY);
+		    if (pk == null) {
+			    createErrorResponse("Missing primary key.");
+			    return;
+		    }
+		    AlphaNumTable table = mSearchEngine.getInMemoryData().getTable(tableName);
+		    if (table == null) {
+			    createErrorResponse("Table '"+tableName+"' not found.");
+			    return;
+		    }
+			AlphaNumRow row = table.getRow(pk.getBytes());
+		    if (row == null) {
+			    createErrorResponse("Primary key "+pk+" for table '"+tableName+"' not found.");
+			    return;
+		    }
+		    byte[][] rowData = row.getRowData();
+		    StringBuilder result = new StringBuilder();
+		    for (int i=0; i<rowData.length; i++) {
+		    	if (rowData[i] != null) {
+				    result.append(table.getColumnTitle(i));
+				    result.append(":");
+				    result.append(new String(rowData[i]).replace("\n", "<NL>"));
+			        }
+			    result.append('\n');
+		    }
+		    createTextResponse(result.toString());
+	    }
+
 	    if (what.equals(REQUEST_INSERT)
 		 || what.equals(REQUEST_UPDATE)
 		 || what.equals(REQUEST_DELETE)) {
@@ -150,7 +188,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 			    createErrorResponse("Invalid token.");
 			    return;
 		    }
-		    String tableName = getRequestText(QUERY_PARAMETER_TABLE);
+		    String tableName = getRequestText(PARAMETER_TABLE);
 		    if (tableName == null) {
 			    createErrorResponse("Missing table name.");
 			    return;
@@ -160,52 +198,59 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 			    createErrorResponse("Table '"+tableName+"' not found.");
 			    return;
 		    }
+
+		    TreeMap<String,String> columnValueMap = (TreeMap<String,String>)getRequestObject(KEY_QUERY);
+			if (columnValueMap == null) {
+			    columnValueMap = new TreeMap<>();
+			    for (int i=0; i<table.getColumnCount(); i++) {
+				    String value = getRequestText(table.getColumnName(i));
+				    if (value != null)
+					    columnValueMap.put(table.getColumnName(i), value);
+			    }
+			}
+
 		    String primaryKey = null;
-			if (!what.equals(REQUEST_INSERT)) {
-				String primaryKeyName = table.getColumnName(table.getPrimaryKeyColumn());
-				primaryKey = getRequestText(primaryKeyName);
-				if (primaryKey == null) {
-					createErrorResponse("Primary key '"+primaryKeyName+"' not defined.");
-					return;
-				}
-			}
-			if (what.equals(REQUEST_DELETE)) {
-				if (!table.deleteRow(primaryKey))
-					createErrorResponse("Could not delete row '"+primaryKey+"' of table '"+tableName+"'.");
-				else
-					createTextResponse("OK");
-				return;
-			}
-			TreeMap<String,String> columnValueMap = new TreeMap<>();
-			for (int i=0; i<table.getColumnCount(); i++) {
-				if (table.getColumnType(i) != ConfigurationKeys.COLUMN_TYPE_PK) {
-					String value = getRequestText(table.getColumnName(i));
-					if (value != null)
-						columnValueMap.put(table.getColumnName(i), value);
-				}
-			}
-		    if (columnValueMap.size() == 0) {
+			String pkKey = table.getColumnName(table.getPrimaryKeyColumn());
+			for (String key:columnValueMap.keySet())
+				if (key.equals(pkKey))
+					primaryKey = columnValueMap.get(key);
+			if (primaryKey != null)
+				columnValueMap.remove(pkKey);
+
+		    if (!what.equals(REQUEST_DELETE) && columnValueMap.size() == 0) {
 			    if (what.equals(REQUEST_INSERT))
 				    createErrorResponse("Insert row into '"+tableName+"': No column values found.");
 			    else
 				    createErrorResponse("Update row of '"+tableName+"': No new column values found.");
 			    return;
 		    }
-		    if (what.equals(REQUEST_INSERT)) {
+
+			if (!what.equals(REQUEST_INSERT) && primaryKey == null) {
+				String primaryKeyName = table.getColumnName(table.getPrimaryKeyColumn());
+				createErrorResponse("Primary key '"+primaryKeyName+"' not defined.");
+				return;
+			}
+
+			if (what.equals(REQUEST_DELETE)) {
+				if (!table.deleteRow(primaryKey))
+					createErrorResponse("Could not delete row '"+primaryKey+"' of table '"+tableName+"'.");
+				else
+					createTextResponse(RESPONSE_OK);
+			}
+		    else if (what.equals(REQUEST_INSERT)) {
 			    int[] newPrimaryKeyHolder = new int[1];
 			    if (!table.insertRow(columnValueMap, newPrimaryKeyHolder))
 				    createErrorResponse("Could not insert row into table '"+tableName+"'.");
 			    else
-				    createTextResponse("OK");
-			    return;
+				    createTextResponse(RESPONSE_OK);
 		    }
 		    else {  // UPDATE
 			    if (!table.updateRow(columnValueMap, primaryKey))
 				    createErrorResponse("Could not update row '"+primaryKey+"' of table '"+tableName+"'.");
 			    else
-				    createTextResponse("OK");
-			    return;
+				    createTextResponse(RESPONSE_OK);
 		    }
+		    return;
 	    }
 
 	    if (what.equals(REQUEST_TEMPLATE)) {
@@ -294,7 +339,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 	    String smiles = getRequestText(PARAMETER_SMILES);
 	    String searchType = getRequestText(PARAMETER_SEARCH_TYPE);
 	    String threshold = getRequestText(PARAMETER_THRESHOLD);
-	    String tableName = getRequestText(QUERY_PARAMETER_TABLE);
+	    String tableName = getRequestText(PARAMETER_TABLE);
 		String withStructure = getRequestText(PARAMETER_WITH_STRUCTURE);
 
 		AlphaNumTable table = mSearchEngine.getInMemoryData().getTable(tableName);
@@ -304,7 +349,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 	    query.put(PARAMETER_WITH_STRUCTURE, withStructure == null ? "false" : withStructure);
 
 		if (table != null)
-			query.put(QUERY_PARAMETER_TABLE, tableName);
+			query.put(PARAMETER_TABLE, tableName);
 
 		for (String queryColumnName:mSearchEngine.getQueryColumnNames()) {
 		    String value = getRequestText(queryColumnName);
