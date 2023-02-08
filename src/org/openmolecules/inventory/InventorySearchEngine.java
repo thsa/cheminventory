@@ -69,6 +69,7 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 			for (int column=0; column<table.getColumnCount(); column++) {
 				int type = table.getColumnType(column);
 				if (type == ConfigurationKeys.COLUMN_TYPE_NUM
+				 || type == ConfigurationKeys.COLUMN_TYPE_ID
 				 || type == ConfigurationKeys.COLUMN_TYPE_TEXT) {
 					String key = table.getAliasName()+"."+table.getColumnName(column);
 					mQueryColumnMap.put(key, new QueryColumn(table, column, type));

@@ -29,6 +29,7 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.util.TreeMap;
 
 public class InventoryTask extends ServerTask implements ConfigurationKeys,InventoryServerConstants {
@@ -40,29 +41,29 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 		mSearchEngine = searchEngine;
 	}
 
-    @Override
-    public void performTask() {
-    	String what = getRequestText(KEY_REQUEST);
-    	if (what == null) {
+	@Override
+	public void performTask() {
+		String what = getRequestText(KEY_REQUEST);
+		if (what == null) {
 			createErrorResponse("Undefined request. For help set parameter 'what' to 'help'");
 			return;
-    		}
+			}
 
-	    if (what.equals(REQUEST_HELP)) {
-		    createPlainResponse(
-		    		"Help page of the REST-API of the openmolecules.org Chemical-Inventory search engine\n\n"
-		          + "  (For Java clients there is a more efficient API that allows\n"
+		if (what.equals(REQUEST_HELP)) {
+			createPlainResponse(
+					"Help page of the REST-API of the openmolecules.org Chemical-Inventory search engine\n\n"
+				  + "  (For Java clients there is a more efficient API that allows\n"
 				  + "   sending complex search specifications as single Java object)\n\n"
-		          + "To use the REST-API you may send HTTP(S) GET or POST requests to the server,\n"
+				  + "To use the REST-API you may send HTTP(S) GET or POST requests to the server,\n"
 				  + "which runs the chem-inventory service, e.g. http://localhost:8092.\n"
-		          + "You may attach key-value pairs as parameters to define your request:\n\n"
-		          + "key 'what':\n"
-		          + "  value 'help': Returns this help page as text.\n\n"
-			      + "  value 'erm': Returns a specification of all tables and columns accessible by this server.\n\n"
-			      + "  value 'query': Defines a structure query and requires more parameters:\n"
+				  + "You may attach key-value pairs as parameters to define your request:\n\n"
+				  + "key 'what':\n"
+				  + "  value 'help': Returns this help page as text.\n\n"
+				  + "  value 'erm': Returns a specification of all tables and columns accessible by this server.\n\n"
+				  + "  value 'query': Defines a structure query and requires more parameters:\n"
 				  + "    key 'smiles': Optional parameter to attach a structure search to the query.\n"
 				  + "      value: valid SMILES code of a chemical structure for substructure or similarity search.\n"
-			      + "        key 'searchType': optional parameter to define the search type. If not given, 'substructure' is assumed.\n"
+				  + "        key 'searchType': optional parameter to define the search type. If not given, 'substructure' is assumed.\n"
 				  + "          value: Currently it must be 'substructure' or 'similarity'.\n"
 				  + "        key 'threshold' Optional numerical similarity cut-off. If not given '80' is assumed.\n"
 				  + "          value: numerical fractional or percent value, e.g. '0.75' or '75', to return all structures\n"
@@ -84,10 +85,10 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 				  + "      value: text string, which must be a substring of a row's column content for the row to be a match.\n"
 				  + "             The value may be preceded by '=', '!', or '!=' (equals, does not contain, is not equal).\n"
 				  + "      Valid values for <textcol>: "+getQueryColumnNames(COLUMN_TYPE_TEXT)+"\n"
-			      + "      (specify mixture of <numcol> and <textcol> key-value pairs to define matching rows)\n\n"
+				  + "      (specify mixture of <numcol> and <textcol> key-value pairs to define matching rows)\n\n"
 				  + "  value 'row': Returns one row of the defined table.\n"
 				  + "    key 'table': SQL table name.\n"
-				  + "    key 'pk': the row's primary key.\n\n"
+				  + "    key '<column>' ([pk] or [id] column name): the row's primary key or ID.\n\n"
 				  + "  value 'login': Returns a token, which is needed for inserting, changing, or deleting rows in the database.\n"
 				  + "    key 'user': Valid user-ID.\n"
 				  + "    key 'password': Valid password.\n"
@@ -95,135 +96,102 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 				  + "  value 'insert': Inserts a new row into the specified table of the database.\n"
 				  + "    key 'token': A valid token returned by a previous 'login' request.\n"
 				  + "    key 'table': The name of the table name in which to insert a new row.\n"
-				  + "    key '<column>', where <column> is SQL column name: column value for the new row.\n"
+				  + "    key '<column>' (SQL column name): column value for the new row.\n"
 				  + "      (specify a key-value pair for every column except for null values and for the [pk] column)\n\n"
 				  + "  value 'update': Updates an existing row of the specified table of the database.\n"
 				  + "    key 'token': A valid token returned by a previous 'login' request.\n"
 				  + "    key 'table': The name of the table name in which to row shall be updated.\n"
-				  + "    key '<column>', where <column> is the SQL column name: new column value for the existing row.\n"
+				  + "    key '<column>' (SQL column name): new column value for the existing row.\n"
 				  + "      (specify a key-value pair for every column that needs to change and for the [pk] column)\n\n"
 				  + "  value 'delete': Deletes an existing row from the specified table of the database.\n"
 				  + "    key 'token': A valid token returned by a previous 'login' request.\n"
 				  + "    key 'table': The name of the table name in which to row shall be updated.\n"
-				  + "    key '<pk-column>', where <pk-column> is the SQL column name of the primary key of the row to be deleted.\n\n"
+				  + "    key '<column>' ([pk] or [id] column name): the row's primary key or ID.\n\n"
 				  + "Examples (as HTTP(S) GET requests):\n"
 				  + "  http(s)://some.server.com/?what=help\n"
-			      + "    Get this help page.\n\n"
+				  + "    Get this help page.\n\n"
 				  + "  http(s)://some.server.com/?what=query&smiles=c1cncnc1OC\n"
 				  + "    Retrieve information about all bottles containing a super-structure of 6-Methoxy-pyrimidine.\n\n"
 				  + "  http(s)://some.server.com/?what=query&smiles=c1ccccc1O&current_amount=>5000&s.name=ABC\n"
 				  + "    Retrieve all bottles from supplier 'ABC' with a phenol substructure and a current amount above 5000 mg.\n\n"
 					);
-		    return;
-		    }
-
-	    if (what.equals(REQUEST_ERM)) {
-	    	createTextResponse(mSearchEngine.getTableSpecification());
-	    	return;
-		    }
-
-	    if (what.equals(REQUEST_LOGIN)) {
-		    String user = getRequestText(KEY_USER);
-		    String password = getRequestText(KEY_PASSWORD);
-	    	if (user == null || password == null) {
-			    createErrorResponse("User-ID or password missing.");
-			    return;
-		        }
-	    	if (Authorizer.getInstance().isBlocked(getClientIP())) {
-			    createErrorResponse("Too many login tries. Try again later.");
-			    return;
-			    }
-			String token = Authorizer.getInstance().createToken(user, password);
-	    	if (token == null) {
-			    createErrorResponse("Invalid user or password.");
-			    return;
-			    }
-	    	createTextResponse(token);
-	    	return;
-		    }
-
-	    if (what.equals(REQUEST_ROW)) {
-		    String tableName = getRequestText(PARAMETER_TABLE);
-		    if (tableName == null) {
-			    createErrorResponse("Missing table name.");
-			    return;
-		    }
-		    String pk = getRequestText(PARAMETER_PRIMARY_KEY);
-		    if (pk == null) {
-			    createErrorResponse("Missing primary key.");
-			    return;
-		    }
-		    AlphaNumTable table = mSearchEngine.getInMemoryData().getTable(tableName);
-		    if (table == null) {
-			    createErrorResponse("Table '"+tableName+"' not found.");
-			    return;
-		    }
-			AlphaNumRow row = table.getRow(pk.getBytes());
-		    if (row == null) {
-			    createErrorResponse("Primary key "+pk+" for table '"+tableName+"' not found.");
-			    return;
-		    }
-		    byte[][] rowData = row.getRowData();
-		    StringBuilder result = new StringBuilder();
-		    for (int i=0; i<rowData.length; i++) {
-		    	if (rowData[i] != null) {
-				    result.append(table.getColumnTitle(i));
-				    result.append(":");
-				    result.append(new String(rowData[i]).replace("\n", "<NL>"));
-			        }
-			    result.append('\n');
-		    }
-		    createTextResponse(result.toString());
-	    }
-
-	    if (what.equals(REQUEST_INSERT)
-		 || what.equals(REQUEST_UPDATE)
-		 || what.equals(REQUEST_DELETE)) {
-		    String token = getRequestText(PARAMETER_TOKEN);
-		    if (token == null) {
-			    createErrorResponse("Missing token to change data.");
-			    return;
-		    }
-		    if (!Authorizer.getInstance().isValidToken(token)) {
-			    createErrorResponse("Invalid token.");
-			    return;
-		    }
-		    String tableName = getRequestText(PARAMETER_TABLE);
-		    if (tableName == null) {
-			    createErrorResponse("Missing table name.");
-			    return;
-		    }
-			AlphaNumTable table = mSearchEngine.getInMemoryData().getTable(tableName);
-		    if (table == null) {
-			    createErrorResponse("Table '"+tableName+"' not found.");
-			    return;
-		    }
-
-		    TreeMap<String,String> columnValueMap = (TreeMap<String,String>)getRequestObject(KEY_QUERY);
-			if (columnValueMap == null) {
-			    columnValueMap = new TreeMap<>();
-			    for (int i=0; i<table.getColumnCount(); i++) {
-				    String value = getRequestText(table.getColumnName(i));
-				    if (value != null)
-					    columnValueMap.put(table.getColumnName(i), value);
-			    }
+			return;
 			}
 
-		    String primaryKey = null;
-			String pkKey = table.getColumnName(table.getPrimaryKeyColumn());
-			for (String key:columnValueMap.keySet())
-				if (key.equals(pkKey))
-					primaryKey = columnValueMap.get(key);
-			if (primaryKey != null)
-				columnValueMap.remove(pkKey);
+		if (what.equals(REQUEST_ERM)) {
+			createTextResponse(mSearchEngine.getTableSpecification());
+			return;
+			}
 
-		    if (!what.equals(REQUEST_DELETE) && columnValueMap.size() == 0) {
-			    if (what.equals(REQUEST_INSERT))
-				    createErrorResponse("Insert row into '"+tableName+"': No column values found.");
-			    else
-				    createErrorResponse("Update row of '"+tableName+"': No new column values found.");
-			    return;
-		    }
+		if (what.equals(REQUEST_LOGIN)) {
+			String user = getRequestText(KEY_USER);
+			String password = getRequestText(KEY_PASSWORD);
+			if (user == null || password == null) {
+				createErrorResponse("User-ID or password missing.");
+				return;
+				}
+			if (Authorizer.getInstance().isBlocked(getClientIP())) {
+				createErrorResponse("Too many login tries. Try again later.");
+				return;
+				}
+			String token = Authorizer.getInstance().createToken(user, password);
+			if (token == null) {
+				createErrorResponse("Invalid user or password.");
+				return;
+				}
+			createTextResponse(token);
+			return;
+			}
+
+		if (what.equals(REQUEST_ROW)) {
+			AlphaNumTable table = getTable();
+			if (table == null)
+				return;
+
+			byte[] pk = getPrimaryKey(table);
+			if (pk == null)
+				return;
+
+			AlphaNumRow row = table.getRow(pk);
+			if (row == null) {
+				createErrorResponse("Primary key "+pk+" for table '"+table.getName()+"' not found.");
+				return;
+			}
+
+			byte[][] rowData = row.getRowData();
+			StringBuilder result = new StringBuilder();
+			for (int i=0; i<rowData.length; i++) {
+				if (rowData[i] != null) {
+					result.append(table.getColumnTitle(i));
+					result.append(":");
+					result.append(new String(rowData[i]).replace("\n", "<NL>"));
+					}
+				result.append('\n');
+			}
+			createTextResponse(result.toString());
+		}
+
+		if (what.equals(REQUEST_INSERT)
+		 || what.equals(REQUEST_UPDATE)
+		 || what.equals(REQUEST_DELETE)) {
+			String token = getToken();
+			if (token == null)
+				return;
+
+			AlphaNumTable table = getTable();
+			if (table == null)
+				return;
+
+			TreeMap<String,String> columnValueMap = getColumnValues(table);
+			byte[] primaryKey = extractPrimaryKey(columnValueMap, table);
+
+			if (!what.equals(REQUEST_DELETE) && columnValueMap.size() == 0) {
+				if (what.equals(REQUEST_INSERT))
+					createErrorResponse("Insert row into '"+table.getName()+"': No column values found.");
+				else
+					createErrorResponse("Update row of '"+table.getName()+"': No new column values found.");
+				return;
+			}
 
 			if (!what.equals(REQUEST_INSERT) && primaryKey == null) {
 				String primaryKeyName = table.getColumnName(table.getPrimaryKeyColumn());
@@ -233,101 +201,185 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 
 			if (what.equals(REQUEST_DELETE)) {
 				if (!table.deleteRow(primaryKey))
-					createErrorResponse("Could not delete row '"+primaryKey+"' of table '"+tableName+"'.");
+					createErrorResponse("Could not delete row '"+primaryKey+"' of table '"+table.getName()+"'.");
 				else
 					createTextResponse(RESPONSE_OK);
 			}
-		    else if (what.equals(REQUEST_INSERT)) {
-			    int[] newPrimaryKeyHolder = new int[1];
-			    if (!table.insertRow(columnValueMap, newPrimaryKeyHolder))
-				    createErrorResponse("Could not insert row into table '"+tableName+"'.");
-			    else
-				    createTextResponse(RESPONSE_OK);
-		    }
-		    else {  // UPDATE
-			    if (!table.updateRow(columnValueMap, primaryKey))
-				    createErrorResponse("Could not update row '"+primaryKey+"' of table '"+tableName+"'.");
-			    else
-				    createTextResponse(RESPONSE_OK);
-		    }
-		    return;
-	    }
+			else if (what.equals(REQUEST_INSERT)) {
+				int[] newPrimaryKeyHolder = new int[1];
+				if (!table.insertRow(columnValueMap, newPrimaryKeyHolder))
+					createErrorResponse("Could not insert row into table '"+table.getName()+"'.");
+				else
+					createTextResponse(RESPONSE_OK);
+			}
+			else {  // UPDATE
+				if (!table.updateRow(columnValueMap, primaryKey))
+					createErrorResponse("Could not update row '"+primaryKey+"' of table '"+table.getName()+"'.");
+				else
+					createTextResponse(RESPONSE_OK);
+			}
+			return;
+		}
 
-	    if (what.equals(REQUEST_TEMPLATE)) {
+		if (what.equals(REQUEST_TEMPLATE)) {
 			byte[] template = mSearchEngine.getTemplate();
-		    try {
-			    createObjectResponse(template);
-			    }
-		    catch (Exception e) {
-			    e.printStackTrace();
-			    createErrorResponse(e.toString());
-			    }
-		    return;
-		    }
+			try {
+				createObjectResponse(template);
+				}
+			catch (Exception e) {
+				e.printStackTrace();
+				createErrorResponse(e.toString());
+				}
+			return;
+			}
 
-	    if (what.equals(REQUEST_RUN_QUERY)) {
+		if (what.equals(REQUEST_RUN_QUERY)) {
 			@SuppressWarnings("unchecked")
 			TreeMap<String,Object> query = (TreeMap<String,Object>)getRequestObject(KEY_QUERY);
 			try {
-			    if (query == null) {
-				    query = tryConstructQueryFromParameters();  // this creates any error message itself
-				    if (query == null)
-					    return;
+				if (query == null) {
+					query = tryConstructQueryFromParameters();  // this creates any error message itself
+					if (query == null)
+						return;
 
-				    long startmillis = System.currentTimeMillis();
+					long startmillis = System.currentTimeMillis();
 
-				    createResponseHeader("text/plain");
-				    PrintStream body = getResponse().getPrintStream();
-				    int resultRowCount = mSearchEngine.printResultTable(query, body);
-				    body.close();
+					createResponseHeader("text/plain");
+					PrintStream body = getResponse().getPrintStream();
+					int resultRowCount = mSearchEngine.printResultTable(query, body);
+					body.close();
 
-				    long millis = System.currentTimeMillis() - startmillis;
+					long millis = System.currentTimeMillis() - startmillis;
 
-				    writeLogEntry(what, resultRowCount+" table rows in "+millis+" ms");
-				    return;
-			        }
-			    else {
-				    StructureSearchSpecification ssSpec = (StructureSearchSpecification)query.get(QUERY_STRUCTURE_SEARCH_SPEC);
-				    if (ssSpec == null)
-					    query.put(QUERY_STRUCTURE_SEARCH_SPEC, new StructureSearchSpecification(StructureSearchSpecification.TYPE_NO_STRUCTURE,
-							    null, null, null, 0f));
+					writeLogEntry(what, resultRowCount+" table rows in "+millis+" ms");
+					return;
+					}
+				else {
+					StructureSearchSpecification ssSpec = (StructureSearchSpecification)query.get(QUERY_STRUCTURE_SEARCH_SPEC);
+					if (ssSpec == null)
+						query.put(QUERY_STRUCTURE_SEARCH_SPEC, new StructureSearchSpecification(StructureSearchSpecification.TYPE_NO_STRUCTURE,
+								null, null, null, 0f));
 
-				    long startmillis = System.currentTimeMillis();
-				    byte[][][] result = mSearchEngine.getMatchingRowsAsBytes(query);
-				    createObjectResponse(result);
-				    long millis = System.currentTimeMillis() - startmillis;
+					long startmillis = System.currentTimeMillis();
+					byte[][][] result = mSearchEngine.getMatchingRowsAsBytes(query);
+					createObjectResponse(result);
+					long millis = System.currentTimeMillis() - startmillis;
 
-				    writeLogEntry(what, result.length+" rows in "+millis+" ms");
-				    }
-			    }
-		    catch (SearchEngineException e) {
-			    createErrorResponse(e.getMessage());
-			    writeLogEntry(what, e.getMessage());
-			    }
-		    catch (Exception e) {
-			    e.printStackTrace();
-			    createErrorResponse(e.toString());
-			    writeLogEntry(what, e.toString());
-			    }
+					writeLogEntry(what, result.length+" rows in "+millis+" ms");
+					}
+				}
+			catch (SearchEngineException e) {
+				createErrorResponse(e.getMessage());
+				writeLogEntry(what, e.getMessage());
+				}
+			catch (Exception e) {
+				e.printStackTrace();
+				createErrorResponse(e.toString());
+				writeLogEntry(what, e.toString());
+				}
 			return;
-    		}
+			}
 
-	    createErrorResponse("Unknown request");
-        }
+		createErrorResponse("Unknown request");
+		}
 
-    private String getQueryColumnNames(int type) {
+	private String getToken() {
+		String token = getRequestText(PARAMETER_TOKEN);
+		if (token == null) {
+			createErrorResponse("Missing token to change data.");
+			return null;
+		}
+		if (!Authorizer.getInstance().isValidToken(token)) {
+			createErrorResponse("Invalid token.");
+			return null;
+		}
+		return token;
+	}
+
+	private AlphaNumTable getTable() {
+		String tableName = getRequestText(PARAMETER_TABLE);
+		if (tableName == null) {
+			createErrorResponse("Missing table name.");
+			return null;
+		}
+		AlphaNumTable table = mSearchEngine.getInMemoryData().getTable(tableName);
+		if (table == null) {
+			createErrorResponse("Table '"+tableName+"' not found.");
+			return null;
+		}
+		return table;
+	}
+
+	private byte[] getPrimaryKey(AlphaNumTable table) {
+		String pkString = getRequestText(table.getColumnName(table.getPrimaryKeyColumn()));
+		if (pkString != null)
+			return pkString.getBytes(StandardCharsets.UTF_8);
+
+		if (table.getIDColumn() == -1) {
+			createErrorResponse("Missing primary key.");
+			return null;
+		}
+		String id = getRequestText(table.getColumnName(table.getIDColumn()));
+		if (id == null) {
+			createErrorResponse("Missing primary key or ID.");
+			return null;
+		}
+		byte[] pk = table.getPKFromID(id.getBytes(StandardCharsets.UTF_8));
+		if (pk == null) {
+			createErrorResponse("ID '"+id+"' not found.");
+			return null;
+		}
+		return pk;
+	}
+
+	private TreeMap<String,String> getColumnValues(AlphaNumTable table) {
+		TreeMap<String,String> columnValueMap = (TreeMap<String,String>)getRequestObject(KEY_QUERY);
+		if (columnValueMap == null) {
+			columnValueMap = new TreeMap<>();
+			for (int i=0; i<table.getColumnCount(); i++) {
+				String value = getRequestText(table.getColumnName(i));
+				if (value != null)
+					columnValueMap.put(table.getColumnName(i), value);
+			}
+		}
+		return columnValueMap;
+	}
+
+	/**
+	 * Removes and returns the primary key from the column values.
+	 * If the primary key is not part of the column values, then it tries
+	 * get and remove the unique ID from the column values. If it succeeds,
+	 * then it tries to get the primary key from the table data using the ID.
+	 * @param columnValueMap
+	 * @param table
+	 * @return
+	 */
+	private byte[] extractPrimaryKey(TreeMap<String,String> columnValueMap, AlphaNumTable table) {
+		String primaryKey = columnValueMap.remove(table.getColumnName(table.getPrimaryKeyColumn()));
+		if (primaryKey != null)
+		 	return primaryKey.getBytes(StandardCharsets.UTF_8);
+
+		if (table.getIDColumn() != -1) {
+			String id = columnValueMap.remove(table.getColumnName(table.getIDColumn()));
+			if (id != null)
+				return table.getPKFromID(id.getBytes(StandardCharsets.UTF_8));
+		}
+		return null;
+	}
+
+	private String getQueryColumnNames(int type) {
 		StringBuilder queryColumnNames = new StringBuilder();
-	    for (QueryColumn queryColumn:mSearchEngine.getQueryColumns()) {
-	    	if (queryColumn.getColumnType() == type) {
-	    		if (queryColumnNames.length() != 0)
-				    queryColumnNames.append(", ");
-			    queryColumnNames.append(queryColumn.getTable().getAliasName());
-			    queryColumnNames.append(".");
-			    queryColumnNames.append(queryColumn.getTable().getColumnName(queryColumn.getColumnIndex()));
-		    }
-	    }
-	    return queryColumnNames.toString();
-    }
+		for (QueryColumn queryColumn:mSearchEngine.getQueryColumns()) {
+			if (queryColumn.getColumnType() == type) {
+				if (queryColumnNames.length() != 0)
+					queryColumnNames.append(", ");
+				queryColumnNames.append(queryColumn.getTable().getAliasName());
+				queryColumnNames.append(".");
+				queryColumnNames.append(queryColumn.getTable().getColumnName(queryColumn.getColumnIndex()));
+			}
+		}
+		return queryColumnNames.toString();
+	}
 
 	/**
 	 * If the incoming server request comes with plain text parameters (PUT or GET)
@@ -336,81 +388,81 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 	 * @return query object
 	 */
 	private TreeMap<String,Object> tryConstructQueryFromParameters() {
-	    String smiles = getRequestText(PARAMETER_SMILES);
-	    String searchType = getRequestText(PARAMETER_SEARCH_TYPE);
-	    String threshold = getRequestText(PARAMETER_THRESHOLD);
-	    String tableName = getRequestText(PARAMETER_TABLE);
+		String smiles = getRequestText(PARAMETER_SMILES);
+		String searchType = getRequestText(PARAMETER_SEARCH_TYPE);
+		String threshold = getRequestText(PARAMETER_THRESHOLD);
+		String tableName = getRequestText(PARAMETER_TABLE);
 		String withStructure = getRequestText(PARAMETER_WITH_STRUCTURE);
 
 		AlphaNumTable table = mSearchEngine.getInMemoryData().getTable(tableName);
 
-	    TreeMap<String,Object> query = new TreeMap<>();
+		TreeMap<String,Object> query = new TreeMap<>();
 
-	    query.put(PARAMETER_WITH_STRUCTURE, withStructure == null ? "false" : withStructure);
+		query.put(PARAMETER_WITH_STRUCTURE, withStructure == null ? "false" : withStructure);
 
 		if (table != null)
 			query.put(PARAMETER_TABLE, tableName);
 
 		for (String queryColumnName:mSearchEngine.getQueryColumnNames()) {
-		    String value = getRequestText(queryColumnName);
-		    if (value == null && table != null)   // we allow column specification without table alias
-		    	value = getRequestText(queryColumnName.substring(1+queryColumnName.indexOf('.')));
-		    if (value != null)
+			String value = getRequestText(queryColumnName);
+			if (value == null && table != null)   // we allow column specification without table alias
+				value = getRequestText(queryColumnName.substring(1+queryColumnName.indexOf('.')));
+			if (value != null)
 				query.put(queryColumnName, value);
-	    }
+		}
 
-	    if (smiles != null) {
-		    StereoMolecule mol = new StereoMolecule();
-		    try {
-			    new SmilesParser().parse(mol, smiles);
-			    mol.setFragment(true);
-		        }
-		    catch (Exception e) {
-			    createErrorResponse("Invalid SMILES:"+e);
-			    return null;
-		        }
+		if (smiles != null) {
+			StereoMolecule mol = new StereoMolecule();
+			try {
+				new SmilesParser().parse(mol, smiles);
+				mol.setFragment(true);
+				}
+			catch (Exception e) {
+				createErrorResponse("Invalid SMILES:"+e);
+				return null;
+				}
 
-		    byte[][] idcode = new byte[1][];
-		    idcode[0] = new Canonizer(mol).getIDCode().getBytes();
+			byte[][] idcode = new byte[1][];
+			idcode[0] = new Canonizer(mol).getIDCode().getBytes(StandardCharsets.UTF_8);
 
-		    String descriptorName = "FragFp";
-		    int type = StructureSearchSpecification.TYPE_SUBSTRUCTURE;
-		    if (searchType != null && !SEARCH_TYPE_SSS.equals(searchType)) {
+			String descriptorName = "FragFp";
+			int type = StructureSearchSpecification.TYPE_SUBSTRUCTURE;
+			if (searchType != null && !SEARCH_TYPE_SSS.equals(searchType)) {
 				if (SEARCH_TYPE_SIM.equals(searchType)) {
 					type = StructureSearchSpecification.TYPE_SIMILARITY;
 					descriptorName = "SkelSpheres";
 					}
-			    else {
+				else {
 					createErrorResponse("Search type not recognized");
 					return null;
 					}
-		        }
+				}
 
-		    float cutoff = 0.8f;
-		    try {
-			    if (threshold != null) {
-				    cutoff = Float.parseFloat(threshold);
-				    if (cutoff > 1f)
-					    cutoff /= 100;   // we also support percent values
-			        if (cutoff < 0.6f || cutoff > 1f) {
-				        createErrorResponse("Similarity threshold is out of range");
-				        return null;
-				        }
-			        }
-			    }
-		    catch (Exception e) {
-			    createErrorResponse("Invalid similarity threshold");
-			    return null;
-		        }
+			float cutoff = 0.8f;
+			try {
+				if (threshold != null) {
+					cutoff = Float.parseFloat(threshold);
+					if (cutoff > 1f)
+						cutoff /= 100;   // we also support percent values
+					if (cutoff < 0.6f || cutoff > 1f) {
+						createErrorResponse("Similarity threshold is out of range");
+						return null;
+						}
+					}
+				}
+			catch (Exception e) {
+				createErrorResponse("Invalid similarity threshold");
+				return null;
+				}
 
-		    query.put(QUERY_STRUCTURE_SEARCH_SPEC, new StructureSearchSpecification(type, idcode, null, descriptorName, cutoff));
-		    }
-	    else {
-		    query.put(QUERY_STRUCTURE_SEARCH_SPEC, new StructureSearchSpecification(StructureSearchSpecification.TYPE_NO_STRUCTURE, null, null, null, 0f));
-		    }
+			query.put(QUERY_STRUCTURE_SEARCH_SPEC, new StructureSearchSpecification(type, idcode, null, descriptorName, cutoff));
+			}
+		else {
+			query.put(QUERY_STRUCTURE_SEARCH_SPEC, new StructureSearchSpecification(StructureSearchSpecification.TYPE_NO_STRUCTURE, null, null, null, 0f));
+			}
 
-	    return query;
-        }
+		return query;
+		}
 
 	private void writeLogEntry(final String what, final String message) {
 		if (SwingUtilities.isEventDispatchThread()) {

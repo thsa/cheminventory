@@ -2,13 +2,13 @@ USE cheminventory;
 
 CREATE TABLE location (
 	location_id int NOT NULL AUTO_INCREMENT,
-	name varchar(255) NOT NULL,
+	name varchar(255) NOT NULL UNIQUE,
 	PRIMARY KEY (location_id)
 );
 
 CREATE TABLE supplier (
 	supplier_id int NOT NULL AUTO_INCREMENT,
-	name varchar(255) NOT NULL,
+	name varchar(255) NOT NULL UNIQUE,
 	PRIMARY KEY (supplier_id)
 );
 
@@ -30,7 +30,7 @@ CREATE TABLE bottle (
 	compound_id int NOT NULL,
 	location_id int NOT NULL,
 	supplier_id int NOT NULL,
-	barcode varchar(255),
+	barcode varchar(255) NOT NULL UNIQUE,
 	catalog_no varchar(255),
 	amount_unit varchar(16),
 	initial_amount float NOT NULL,

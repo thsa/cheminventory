@@ -20,6 +20,7 @@ package org.openmolecules.inventory;
 
 import com.actelion.research.util.ByteArrayComparator;
 
+import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -32,9 +33,10 @@ public class AlphaNumTable implements ConfigurationKeys {
 	private String[] mColumnName;
 	private ForeignKey[] mForeignKey;
 	private int[] mColumnType;
-	private int mPrimaryKeyColumn,mForeignKeyCount;
+	private int mPrimaryKeyColumn,mIDColumn,mForeignKeyCount;
 	private ArrayList<AlphaNumRow> mRowList;
-	private TreeMap<byte[],AlphaNumRow> mRowMap;
+	private TreeMap<byte[],AlphaNumRow> mPKToRowMap;
+	private TreeMap<byte[],byte[]> mIDToPKMap;
 
 	/**
 	 * Parses specification and sets up columns and properties
@@ -67,6 +69,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 		int columnCount = entry.length / 2 - 1;
 
 		mPrimaryKeyColumn = -1;
+		mIDColumn = -1;
 		mColumnTitle = new String[columnCount];
 		mColumnName = new String[columnCount];
 		mColumnType = new int[columnCount];
@@ -118,6 +121,8 @@ public class AlphaNumTable implements ConfigurationKeys {
 
 			if (mColumnType[columnIndex] == COLUMN_TYPE_PK)
 				mPrimaryKeyColumn = columnIndex;
+			if (mColumnType[columnIndex] == COLUMN_TYPE_ID)
+				mIDColumn = columnIndex;
 
 			mColumnTitle[columnIndex] = entry[i].substring(index+1).trim();
 			mColumnName[columnIndex] = entry[i+1].trim();
@@ -195,8 +200,12 @@ public class AlphaNumTable implements ConfigurationKeys {
 		return mRowList.size();
 	}
 
+	public byte[] getPKFromID(byte[] id) {
+		return mIDToPKMap.get(id);
+	}
+
 	public AlphaNumRow getRow(byte[] primaryKey) {
-		return mRowMap.get(primaryKey);
+		return mPKToRowMap.get(primaryKey);
 	}
 
 	public ArrayList<AlphaNumRow> getRowList() {
@@ -209,6 +218,10 @@ public class AlphaNumTable implements ConfigurationKeys {
 
 	public int getPrimaryKeyColumn() {
 		return mPrimaryKeyColumn;
+	}
+
+	public int getIDColumn() {
+		return mIDColumn;
 	}
 
 	public ForeignKey[] getForeignKeys() {
@@ -308,13 +321,13 @@ public class AlphaNumTable implements ConfigurationKeys {
 
 		if (runUpdateSQL(sql.toString(), newPrimaryKeyHolder)) {
 			AlphaNumRow row = new AlphaNumRow(getColumnCount());
-			byte[] primaryKey = Integer.toString(newPrimaryKeyHolder[0]).getBytes();
+			byte[] primaryKey = Integer.toString(newPrimaryKeyHolder[0]).getBytes(StandardCharsets.UTF_8);
 			row.setData(mPrimaryKeyColumn, primaryKey);
 			for (String columnName:columnValueMap.keySet()) {
 				int column = getColumnIndex(columnName);
 				String value = columnValueMap.get(columnName);
 				if (value != null) {
-					row.setData(column, value.getBytes());
+					row.setData(column, value.getBytes(StandardCharsets.UTF_8));
 					if (mColumnType[column] == COLUMN_TYPE_NUM) {
 						try {
 							row.setFloat(Float.parseFloat(value), column);
@@ -323,14 +336,16 @@ public class AlphaNumTable implements ConfigurationKeys {
 					}
 				}
 			}
-			mRowMap.put(primaryKey, row);
+			mPKToRowMap.put(primaryKey, row);
+			if (mIDColumn != -1)
+				mIDToPKMap.put(row.getData(mIDColumn), primaryKey);
 			mRowList.add(row);
 			return true;
 		}
 		return false;
 	}
 
-	protected boolean updateRow(TreeMap<String,String> columnValueMap, String primaryKey) {
+	protected boolean updateRow(TreeMap<String,String> columnValueMap, byte[] primaryKey) {
 		StringBuilder sql = new StringBuilder("UPDATE ");
 		sql.append(mTableLongName);
 		sql.append(" SET");
@@ -362,18 +377,24 @@ public class AlphaNumTable implements ConfigurationKeys {
 		sql.append(" WHERE ");
 		sql.append(mColumnName[mPrimaryKeyColumn]);
 		sql.append('=');
-		sql.append(primaryKey);
+		sql.append(new String(primaryKey, StandardCharsets.UTF_8));
 
 		if (runUpdateSQL(sql.toString(), null)) {
-			AlphaNumRow row = mRowMap.get(primaryKey.getBytes());
+			AlphaNumRow row = mPKToRowMap.get(primaryKey);
 			for (String columnName:columnValueMap.keySet()) {
 				int column = getColumnIndex(columnName);
-				String value = columnValueMap.get(columnName);
-				if (value != null) {
-					row.setData(column, value.getBytes());
+				String valueString = columnValueMap.get(columnName);
+				if (valueString != null) {
+					byte[] value = valueString.getBytes(StandardCharsets.UTF_8);
+					if (column == mIDColumn) {
+						byte[] pk = mIDToPKMap.remove(row.getData(mIDColumn));
+						if (pk != null) // shouldn't happen
+							mIDToPKMap.put(value, pk);
+					}
+					row.setData(column, value);
 					if (mColumnType[column] == COLUMN_TYPE_NUM) {
 						try {
-							row.setFloat(Float.parseFloat(value), column);
+							row.setFloat(Float.parseFloat(valueString), column);
 						}
 						catch (NumberFormatException nfe) {}
 					}
@@ -384,17 +405,19 @@ public class AlphaNumTable implements ConfigurationKeys {
 		return false;
 	}
 
-	protected boolean deleteRow(String primaryKey) {
+	protected boolean deleteRow(byte[] primaryKey) {
 		StringBuilder sql = new StringBuilder("DELETE FROM ");
 		sql.append(mTableLongName);
 		sql.append(" WHERE ");
 		sql.append(mColumnName[mPrimaryKeyColumn]);
 		sql.append('=');
-		sql.append(primaryKey);
+		sql.append(new String(primaryKey, StandardCharsets.UTF_8));
 		if (runUpdateSQL(sql.toString(), null)) {
-			AlphaNumRow row = mRowMap.remove(primaryKey.getBytes());
+			AlphaNumRow row = mPKToRowMap.remove(primaryKey);
 			if (row != null)
 				mRowList.remove(row);
+			if (mIDColumn != -1)
+				mIDToPKMap.remove(row.getData(mIDColumn));
 			return true;
 		}
 		return false;
@@ -453,9 +476,15 @@ public class AlphaNumTable implements ConfigurationKeys {
 			return false;
 		}
 
-		mRowMap = new TreeMap<>(new ByteArrayComparator());
+		mPKToRowMap = new TreeMap<>(new ByteArrayComparator());
 		for (AlphaNumRow row:mRowList)
-			mRowMap.put(row.getData(mPrimaryKeyColumn), row);
+			mPKToRowMap.put(row.getData(mPrimaryKeyColumn), row);
+
+		if (mIDColumn != -1) {
+			mIDToPKMap = new TreeMap<>(new ByteArrayComparator());
+			for (AlphaNumRow row:mRowList)
+				mIDToPKMap.put(row.getData(mIDColumn), row.getData(mPrimaryKeyColumn));
+		}
 
 		System.out.println("Loaded "+mRowList.size()+" rows from "+getName());
 
@@ -490,7 +519,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 		for (int column=0; column<getColumnCount(); column++) {
 			String s = rset.getString(column+1);
 			if (s != null) {
-				row.setData(column, s.getBytes());
+				row.setData(column, s.getBytes(StandardCharsets.UTF_8));
 				if (mColumnType[column] == COLUMN_TYPE_NUM) {
 					try {
 						row.setFloat(Float.parseFloat(s), column);

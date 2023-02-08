@@ -40,7 +40,6 @@ public interface InventoryServerConstants {
 
 	String PARAMETER_TABLE = "table"; // for insert/update/delete or to define alphanum single table query instead of default
 	String PARAMETER_TOKEN = "token";
-	String PARAMETER_PRIMARY_KEY = "pk";
 
 	String RESPONSE_OK = "OK";
 
