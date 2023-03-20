@@ -29,8 +29,8 @@ import java.util.Collection;
 import java.util.TreeMap;
 
 public class InventorySearchEngine implements ConfigurationKeys,InventoryServerConstants {
-	private static final int MAX_SSS_MATCHES = 0;		// no limit
-	private static final int MAX_NON_SSS_MATCHES = 0;	// no limit
+	private static final int MAX_SSS_MATCHES = Integer.MAX_VALUE;		// no limit
+	private static final int MAX_NON_SSS_MATCHES = Integer.MAX_VALUE;	// no limit
 
 	private static final int MAX_ATOMS = 256;
 
@@ -194,7 +194,8 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 			for (int i=0; i<mQueryCriterion.length; i++) {
 				if (queryColumn[i].getColumnType() == COLUMN_TYPE_NUM)
 					parseNumericalCriterion(mQueryCriterion[i], i);
-				else if (queryColumn[i].getColumnType() == COLUMN_TYPE_TEXT)
+				else if (queryColumn[i].getColumnType() == COLUMN_TYPE_TEXT
+					  || queryColumn[i].getColumnType() == COLUMN_TYPE_ID)
 					parseTextCriterion(mQueryCriterion[i], i);
 			}
 		}
@@ -247,7 +248,8 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 					if (Float.isNaN(value) || value < mQueryLow[i] || value > mQueryHigh[i])
 						return false;
 				}
-				else if (mQueryColumnType[i] == COLUMN_TYPE_TEXT) {
+				else if (mQueryColumnType[i] == COLUMN_TYPE_TEXT
+					  || mQueryColumnType[i] == COLUMN_TYPE_ID) {
 					byte[] value = (mForeignKeyIndex[i] == -1) ? bottleRow.getData(mQueryColumnIndex[i])
 							: bottleRow.getReferencedRow(mForeignKeyIndex[i]).getData(mQueryColumnIndex[i]);
 					boolean match = false;
@@ -281,7 +283,7 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 		private int[] getSingleTableMatchingRowIndexes() {
 			int[] hitIndex = new int[mSearchedSingleTable.getRowCount()];
 			int count = 0;
-			for (int i = 0; i<mSearchedSingleTable.getRowCount(); i++)
+			for (int i = 0; i<mSearchedSingleTable.getRowCount() && count<mMaxRows; i++)
 			    if (rowQualifies(i))
 					hitIndex[count++] = i;
 

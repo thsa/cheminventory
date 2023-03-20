@@ -201,7 +201,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 
 			if (what.equals(REQUEST_DELETE)) {
 				if (!table.deleteRow(primaryKey))
-					createErrorResponse("Could not delete row '"+primaryKey+"' of table '"+table.getName()+"'.");
+					createErrorResponse("Could not delete row '"+new String(primaryKey)+"' of table '"+table.getName()+"'.");
 				else
 					createTextResponse(RESPONSE_OK);
 			}
@@ -214,7 +214,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 			}
 			else {  // UPDATE
 				if (!table.updateRow(columnValueMap, primaryKey))
-					createErrorResponse("Could not update row '"+primaryKey+"' of table '"+table.getName()+"'.");
+					createErrorResponse("Could not update row '"+new String(primaryKey)+"' of table '"+table.getName()+"'.");
 				else
 					createTextResponse(RESPONSE_OK);
 			}
@@ -393,12 +393,16 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 		String threshold = getRequestText(PARAMETER_THRESHOLD);
 		String tableName = getRequestText(PARAMETER_TABLE);
 		String withStructure = getRequestText(PARAMETER_WITH_STRUCTURE);
+		String maxrows = getRequestText(QUERY_MAX_ROWS);
 
 		AlphaNumTable table = mSearchEngine.getInMemoryData().getTable(tableName);
 
 		TreeMap<String,Object> query = new TreeMap<>();
 
 		query.put(PARAMETER_WITH_STRUCTURE, withStructure == null ? "false" : withStructure);
+
+		if (maxrows != null)
+			query.put(QUERY_MAX_ROWS, maxrows);
 
 		if (table != null)
 			query.put(PARAMETER_TABLE, tableName);
