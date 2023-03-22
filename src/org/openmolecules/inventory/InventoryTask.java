@@ -86,9 +86,9 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 				  + "             The value may be preceded by '=', '!', or '!=' (equals, does not contain, is not equal).\n"
 				  + "      Valid values for <textcol>: "+getQueryColumnNames(COLUMN_TYPE_TEXT)+"\n"
 				  + "      (specify mixture of <numcol> and <textcol> key-value pairs to define matching rows)\n\n"
-				  + "  value 'row': Returns one row of the defined table.\n"
+				  + "  value 'row': Returns one row of the defined table (includes idcode & idcoords for compound tables).\n"
 				  + "    key 'table': SQL table name.\n"
-				  + "    key '<column>' ([pk] or [id] column name): the row's primary key or ID.\n\n"
+				  + "    key '<column>' ([pk] or [id] column name): the row's primary key or ID.\n"
 				  + "  value 'login': Returns a token, which is needed for inserting, changing, or deleting rows in the database.\n"
 				  + "    key 'user': Valid user-ID.\n"
 				  + "    key 'password': Valid password.\n"
@@ -154,19 +154,35 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 
 			AlphaNumRow row = table.getRow(pk);
 			if (row == null) {
-				createErrorResponse("Primary key "+pk+" for table '"+table.getName()+"' not found.");
+				createErrorResponse("Primary key '"+new String(pk)+"' not found in table '"+table.getName()+"'.");
 				return;
 			}
 
-			byte[][] rowData = row.getRowData();
 			StringBuilder result = new StringBuilder();
+
+			if (row instanceof CompoundRow) {
+				byte[] idcode = ((CompoundRow)row).getIDCode();
+				byte[] coords = ((CompoundRow)row).getCoords();
+				if (idcode != null) {
+					result.append("idcode:");
+					result.append(new String(idcode));
+					result.append('\n');
+					if (coords != null) {
+						result.append("idcoords:");
+						result.append(new String(coords));
+						result.append('\n');
+					}
+				}
+			}
+
+			byte[][] rowData = row.getRowData();
 			for (int i=0; i<rowData.length; i++) {
 				if (rowData[i] != null) {
 					result.append(table.getColumnTitle(i));
 					result.append(":");
 					result.append(new String(rowData[i]).replace("\n", "<NL>"));
-					}
-				result.append('\n');
+					result.append('\n');
+				}
 			}
 			createTextResponse(result.toString());
 		}
@@ -200,21 +216,25 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 			}
 
 			if (what.equals(REQUEST_DELETE)) {
-				if (!table.deleteRow(primaryKey))
-					createErrorResponse("Could not delete row '"+new String(primaryKey)+"' of table '"+table.getName()+"'.");
+				String errorMsg = table.deleteRow(primaryKey);
+				if (errorMsg != null)
+					createErrorResponse(errorMsg);
 				else
 					createTextResponse(RESPONSE_OK);
 			}
 			else if (what.equals(REQUEST_INSERT)) {
-				int[] newPrimaryKeyHolder = new int[1];
-				if (!table.insertRow(columnValueMap, newPrimaryKeyHolder))
-					createErrorResponse("Could not insert row into table '"+table.getName()+"'.");
+				byte[][] newPrimaryKeyHolder = new byte[1][];
+				String errorMsg = table.insertRow(columnValueMap, newPrimaryKeyHolder);
+				if (errorMsg != null)
+					createErrorResponse(errorMsg);
 				else
-					createTextResponse(RESPONSE_OK);
+					createTextResponse(RESPONSE_OK+"; "
+							+table.getColumnName(table.getPrimaryKeyColumn())+":"+new String(newPrimaryKeyHolder[0]));
 			}
 			else {  // UPDATE
-				if (!table.updateRow(columnValueMap, primaryKey))
-					createErrorResponse("Could not update row '"+new String(primaryKey)+"' of table '"+table.getName()+"'.");
+				String errorMsg = table.updateRow(columnValueMap, primaryKey);
+				if (errorMsg != null)
+					createErrorResponse(errorMsg);
 				else
 					createTextResponse(RESPONSE_OK);
 			}
@@ -336,6 +356,14 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 		TreeMap<String,String> columnValueMap = (TreeMap<String,String>)getRequestObject(KEY_QUERY);
 		if (columnValueMap == null) {
 			columnValueMap = new TreeMap<>();
+			if (table instanceof CompoundTable) {
+				String idcode = getRequestText("idcode");
+				if (idcode != null)
+					columnValueMap.put("idcode", idcode);
+				String coords = getRequestText("idcoords");
+				if (coords != null)
+					columnValueMap.put("idcoords", coords);
+			}
 			for (int i=0; i<table.getColumnCount(); i++) {
 				String value = getRequestText(table.getColumnName(i));
 				if (value != null)

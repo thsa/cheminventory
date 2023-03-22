@@ -279,7 +279,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 		return sql.toString();
 	}
 
-	protected boolean insertRow(TreeMap<String,String> columnValueMap, int[] newPrimaryKeyHolder) {
+	protected String insertRow(TreeMap<String,String> columnValueMap, byte[][] newPrimaryKeyHolder) {
 		StringBuilder sql = new StringBuilder("INSERT INTO ");
 		sql.append(mTableLongName);
 		sql.append(' ');
@@ -294,7 +294,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 		}
 
 		if (count == 0)
-			return false;
+			return "No column data found.";
 
 		sql.append(") VALUES ");
 
@@ -319,33 +319,36 @@ public class AlphaNumTable implements ConfigurationKeys {
 
 		sql.append(")");
 
-		if (runUpdateSQL(sql.toString(), newPrimaryKeyHolder)) {
-			AlphaNumRow row = new AlphaNumRow(getColumnCount());
-			byte[] primaryKey = Integer.toString(newPrimaryKeyHolder[0]).getBytes(StandardCharsets.UTF_8);
-			row.setData(mPrimaryKeyColumn, primaryKey);
-			for (String columnName:columnValueMap.keySet()) {
-				int column = getColumnIndex(columnName);
-				String value = columnValueMap.get(columnName);
-				if (value != null) {
-					row.setData(column, value.getBytes(StandardCharsets.UTF_8));
-					if (mColumnType[column] == COLUMN_TYPE_NUM) {
-						try {
-							row.setFloat(Float.parseFloat(value), column);
-						}
-						catch (NumberFormatException nfe) {}
+		String errorMsg = runUpdateSQL(sql.toString(), newPrimaryKeyHolder);
+		if (errorMsg != null)
+			return errorMsg;
+
+		AlphaNumRow row = new AlphaNumRow(getColumnCount());
+		byte[] primaryKey = newPrimaryKeyHolder[0];
+		row.setData(mPrimaryKeyColumn, primaryKey);
+		for (String columnName:columnValueMap.keySet()) {
+			int column = getColumnIndex(columnName);
+			String value = columnValueMap.get(columnName);
+			if (value != null) {
+				row.setData(column, value.getBytes(StandardCharsets.UTF_8));
+				if (mColumnType[column] == COLUMN_TYPE_NUM) {
+					try {
+						row.setFloat(Float.parseFloat(value), column);
 					}
+					catch (NumberFormatException nfe) {}
 				}
 			}
-			mPKToRowMap.put(primaryKey, row);
-			if (mIDColumn != -1)
-				mIDToPKMap.put(row.getData(mIDColumn), primaryKey);
-			mRowList.add(row);
-			return true;
 		}
-		return false;
+		mPKToRowMap.put(primaryKey, row);
+		if (mIDColumn != -1)
+			mIDToPKMap.put(row.getData(mIDColumn), primaryKey);
+		mRowList.add(row);
+		return null;
 	}
 
-	protected boolean updateRow(TreeMap<String,String> columnValueMap, byte[] primaryKey) {
+	protected String updateRow(TreeMap<String,String> columnValueMap, byte[] primaryKey) {
+		AlphaNumRow row = mPKToRowMap.get(primaryKey);
+
 		StringBuilder sql = new StringBuilder("UPDATE ");
 		sql.append(mTableLongName);
 		sql.append(" SET");
@@ -354,76 +357,80 @@ public class AlphaNumTable implements ConfigurationKeys {
 		for (int i=0; i<mColumnName.length; i++) {
 			String value = columnValueMap.get(mColumnName[i]);
 			if (value != null) {
-				sql.append(count == 0 ? ' ' : ',');
-				sql.append(mColumnName[i]);
-				sql.append('=');
-				if (mColumnType[i] == COLUMN_TYPE_TEXT
-				 || mColumnType[i] == COLUMN_TYPE_ID
-				 || mColumnType[i] == COLUMN_TYPE_DATE) {
-					sql.append('\'');
-					sql.append(value);
-					sql.append('\'');
+				byte[] currentValue = row.getData(getColumnIndex(mColumnName[i]));
+				if (currentValue == null || !value.equals(new String(currentValue))) {
+					sql.append(count == 0 ? ' ' : ',');
+					sql.append(mColumnName[i]);
+					sql.append('=');
+					if (mColumnType[i] == COLUMN_TYPE_TEXT
+					 || mColumnType[i] == COLUMN_TYPE_ID
+					 || mColumnType[i] == COLUMN_TYPE_DATE) {
+						sql.append('\'');
+						sql.append(value);
+						sql.append('\'');
+					}
+					else {
+						sql.append(value);
+					}
+					count++;
 				}
-				else {
-					sql.append(value);
-				}
-				count++;
 			}
 		}
 
 		if (count == 0)
-			return false;
+			return "No changes found in update request for table '"+mTableDisplayName+"'.";
 
 		sql.append(" WHERE ");
 		sql.append(mColumnName[mPrimaryKeyColumn]);
 		sql.append('=');
 		sql.append(new String(primaryKey, StandardCharsets.UTF_8));
 
-		if (runUpdateSQL(sql.toString(), null)) {
-			AlphaNumRow row = mPKToRowMap.get(primaryKey);
-			for (String columnName:columnValueMap.keySet()) {
-				int column = getColumnIndex(columnName);
-				String valueString = columnValueMap.get(columnName);
-				if (valueString != null) {
-					byte[] value = valueString.getBytes(StandardCharsets.UTF_8);
-					if (column == mIDColumn) {
-						byte[] pk = mIDToPKMap.remove(row.getData(mIDColumn));
-						if (pk != null) // shouldn't happen
-							mIDToPKMap.put(value, pk);
+		String errorMsg = runUpdateSQL(sql.toString(), null);
+		if (errorMsg != null)
+			return errorMsg;
+
+		for (int i=0; i<mColumnName.length; i++) {
+			String newValue = columnValueMap.get(mColumnName[i]);
+			if (newValue != null) {
+				int column = getColumnIndex(mColumnName[i]);
+				byte[] value = newValue.getBytes(StandardCharsets.UTF_8);
+				if (column == mIDColumn) {
+					byte[] pk = mIDToPKMap.remove(row.getData(mIDColumn));
+					if (pk != null) // shouldn't be null
+						mIDToPKMap.put(value, pk);
+				}
+				row.setData(column, value);
+				if (mColumnType[column] == COLUMN_TYPE_NUM) {
+					try {
+						row.setFloat(Float.parseFloat(newValue), column);
 					}
-					row.setData(column, value);
-					if (mColumnType[column] == COLUMN_TYPE_NUM) {
-						try {
-							row.setFloat(Float.parseFloat(valueString), column);
-						}
-						catch (NumberFormatException nfe) {}
-					}
+					catch (NumberFormatException nfe) {}
 				}
 			}
-			return true;
 		}
-		return false;
+		return null;
 	}
 
-	protected boolean deleteRow(byte[] primaryKey) {
+	protected String deleteRow(byte[] primaryKey) {
 		StringBuilder sql = new StringBuilder("DELETE FROM ");
 		sql.append(mTableLongName);
 		sql.append(" WHERE ");
 		sql.append(mColumnName[mPrimaryKeyColumn]);
 		sql.append('=');
 		sql.append(new String(primaryKey, StandardCharsets.UTF_8));
-		if (runUpdateSQL(sql.toString(), null)) {
-			AlphaNumRow row = mPKToRowMap.remove(primaryKey);
-			if (row != null)
-				mRowList.remove(row);
-			if (mIDColumn != -1)
-				mIDToPKMap.remove(row.getData(mIDColumn));
-			return true;
-		}
-		return false;
+		String errorMsg = runUpdateSQL(sql.toString(), null);
+		if (errorMsg != null)
+			return errorMsg;
+
+		AlphaNumRow row = mPKToRowMap.remove(primaryKey);
+		if (row != null)
+			mRowList.remove(row);
+		if (mIDColumn != -1)
+			mIDToPKMap.remove(row.getData(mIDColumn));
+		return null;
 	}
 
-	protected boolean runUpdateSQL(String sql, int[] newPrimaryKeyHolder) {
+	protected String runUpdateSQL(String sql, byte[][] newPrimaryKeyHolder) {
 		try {
 			DatabaseConnector connector = DatabaseConnector.getInstance();
 			if (connector.ensureConnection()) {
@@ -432,16 +439,16 @@ public class AlphaNumTable implements ConfigurationKeys {
 				if (newPrimaryKeyHolder != null) {
 					ResultSet rs = stmt.getGeneratedKeys();
 					if (rs.next())
-						newPrimaryKeyHolder[0] = rs.getInt(1);
+						newPrimaryKeyHolder[0] = Integer.toString(rs.getInt(1)).getBytes(StandardCharsets.UTF_8);
 				}
 				stmt.close();
-				return true;
+				return null;
 			}
 		}
 		catch (SQLException e) {
-			System.out.println("Exception changing table: "+ e.getMessage());
+			return "SQL exception: "+ e.getMessage();
 		}
-		return false;
+		return "Error: Server engine cannot connect to database.";
 	}
 
 	protected void addOptionalTableNamesToSQL(StringBuilder sql) {

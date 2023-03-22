@@ -72,28 +72,34 @@ public class CompoundTable extends AlphaNumTable {
 	}
 
 	@Override
-	protected boolean updateRow(TreeMap<String,String> columnValueMap, byte[] primaryKey) {
-		if (super.updateRow(columnValueMap, primaryKey)) {
-			String idcode = columnValueMap.get("idcode");
-			String coords = columnValueMap.get("idcoords");
-			if (idcode != null)
-				return updateDescriptors(idcode, coords, Integer.parseInt(new String(primaryKey)));
-		}
-		return true;
+	protected String updateRow(TreeMap<String,String> columnValueMap, byte[] primaryKey) {
+		String errorMsg = super.updateRow(columnValueMap, primaryKey);
+		if (errorMsg != null)
+			return errorMsg;
+
+		String idcode = columnValueMap.get("idcode");
+		String coords = columnValueMap.get("idcoords");
+		if (idcode != null)
+			return updateIDCodeAndDescriptors(idcode, coords, primaryKey);
+
+		return null;
 	}
 
 	@Override
-	protected boolean insertRow(TreeMap<String,String> columnValueMap, int[] newPrimaryKeyHolder) {
-		if (super.insertRow(columnValueMap, newPrimaryKeyHolder)) {
-			String idcode = columnValueMap.get("idcode");
-			String coords = columnValueMap.get("idcoords");
-			if (idcode != null)
-				return updateDescriptors(idcode, coords, newPrimaryKeyHolder[0]);
-		}
-		return true;
+	protected String insertRow(TreeMap<String,String> columnValueMap, byte[][] newPrimaryKeyHolder) {
+		String errorMsg = super.insertRow(columnValueMap, newPrimaryKeyHolder);
+		if (errorMsg != null)
+			return errorMsg;
+
+		String idcode = columnValueMap.get("idcode");
+		String coords = columnValueMap.get("idcoords");
+		if (idcode != null)
+			return updateIDCodeAndDescriptors(idcode, coords, newPrimaryKeyHolder[0]);
+
+		return null;
 	}
 
-	private boolean updateDescriptors(String idcode, String coords, int primaryKey) {
+	private String updateIDCodeAndDescriptors(String idcode, String coords, byte[] primaryKey) {
 		StereoMolecule mol = new IDCodeParser().getCompactMolecule(idcode, coords);
 		long[] ffp = DescriptorHandlerLongFFP512.getDefaultInstance().createDescriptor(mol);
 		String encodedFFP = DescriptorHandlerLongFFP512.getDefaultInstance().encode(ffp);
@@ -102,20 +108,28 @@ public class CompoundTable extends AlphaNumTable {
 
 		StringBuilder sql = new StringBuilder("UPDATE ");
 		sql.append(getLongName());
-		sql.append(" SET ffp='");
+
+		sql.append(" SET idcode='");
+		sql.append(idcode);
+		if (coords != null) {
+			sql.append("',idcoords='");
+			sql.append(coords);
+		}
+		sql.append("',fragfp='");
 		sql.append(encodedFFP);
 		sql.append("',skelspheres='");
 		sql.append(encodedSkelSpheres);
 		sql.append("' WHERE ");
 		sql.append(getColumnName(getPrimaryKeyColumn()));
 		sql.append('=');
-		sql.append(primaryKey);
+		sql.append(new String(primaryKey));
 
-		if (runUpdateSQL(sql.toString(), null)) {
-			CompoundRow row = (CompoundRow)getRow(primaryKey);
-			row.setStructure(idcode, coords, ffp, encodedFFP, encodedFFP);
-			return true;
-		}
-		return false;
+		String errorMsg = runUpdateSQL(sql.toString(), null);
+		if (errorMsg != null)
+			return null;
+
+		CompoundRow row = (CompoundRow)getRow(primaryKey);
+		row.setStructure(idcode, coords, ffp, encodedFFP, encodedFFP);
+		return null;
 	}
 }
