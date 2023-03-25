@@ -376,7 +376,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 	/**
 	 * Removes and returns the primary key from the column values.
 	 * If the primary key is not part of the column values, then it tries
-	 * get and remove the unique ID from the column values. If it succeeds,
+	 * to get the unique ID from the column values. If it succeeds,
 	 * then it tries to get the primary key from the table data using the ID.
 	 * @param columnValueMap
 	 * @param table
@@ -388,7 +388,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 		 	return primaryKey.getBytes(StandardCharsets.UTF_8);
 
 		if (table.getIDColumn() != -1) {
-			String id = columnValueMap.remove(table.getColumnName(table.getIDColumn()));
+			String id = columnValueMap.get(table.getColumnName(table.getIDColumn()));
 			if (id != null)
 				return table.getPKFromID(id.getBytes(StandardCharsets.UTF_8));
 		}

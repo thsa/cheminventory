@@ -290,6 +290,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 			if (value != null) {
 				sql.append(count == 0 ? '(' : ",");
 				sql.append(mColumnName[i]);
+				count++;
 			}
 		}
 
@@ -306,9 +307,14 @@ public class AlphaNumTable implements ConfigurationKeys {
 				if (mColumnType[i] == COLUMN_TYPE_TEXT
 				 || mColumnType[i] == COLUMN_TYPE_ID
 				 || mColumnType[i] == COLUMN_TYPE_DATE) {
-					sql.append('\'');
-					sql.append(value);
-					sql.append('\'');
+					if (value.length() == 0 && mColumnType[i] == COLUMN_TYPE_DATE) {
+						sql.append("NULL");
+					}
+					else {
+						sql.append('\'');
+						sql.append(value);
+						sql.append('\'');
+					}
 				}
 				else {
 					sql.append(value);
