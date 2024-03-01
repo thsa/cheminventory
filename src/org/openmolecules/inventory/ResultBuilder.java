@@ -28,7 +28,7 @@ public class ResultBuilder implements ConfigurationKeys {
 	private static final int RESULT_COLUMN_FFP512 = 2;
 	private static final String[] RESULT_STRUCTURE_COLUMN_TITLE = { "idcode", "idcoordinates2D", "FragFp" };
 
-	private InMemoryData mData;
+	private final InMemoryData mData;
 	private int mAlphaNumColumnCount;
 	private AlphaNumTable[] mResultTable;
 	private int[] mResultColumn,mForeignKeyIndex;
@@ -53,7 +53,7 @@ public class ResultBuilder implements ConfigurationKeys {
 	 */
 	public boolean initialize(Properties config) {
 		String resultDef = config.getProperty(RESULT_TABLE);
-		if (resultDef == null || resultDef.length() == 0) {
+		if (resultDef == null || resultDef.isEmpty()) {
 			System.out.println("'"+RESULT_TABLE+"' is missing in config file.");
 			return false;
 		}

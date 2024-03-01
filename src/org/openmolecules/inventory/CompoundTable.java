@@ -28,7 +28,7 @@ import java.sql.SQLException;
 import java.util.TreeMap;
 
 public class CompoundTable extends AlphaNumTable {
-	public static final String[] STRUCTURE_COLUMN_TITLE = { "ID-Code", "ID-Coords", "FragFp" };
+	public static final String[] STRUCTURE_COLUMN_TITLE = { "Structure", "ID-Coords", "FragFp" };
 	private static final String SELECT_COLUMNS = "idcode,idcoords,fragfp,skelspheres";
 	private static final String[] CREATE_COLUMNS = {
 			"idcode varchar(255)", "idcoords varchar(255)", "fragfp varchar(255)", "skelspheres varchar(1023)" };

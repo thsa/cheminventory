@@ -82,4 +82,5 @@ resultTable = \
  b.tara, \
  b.reg_date, \
  b.comment, \
+ b.bottle_id, \
  b.compound_id
