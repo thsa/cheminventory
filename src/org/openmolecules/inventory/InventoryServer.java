@@ -30,7 +30,7 @@ import java.util.Properties;
 public class InventoryServer implements ConfigurationKeys {
 	private static final int DEFAULT_PORT = 8092;
 	private static final int DEFAULT_THREAD_COUNT = 4;
-	private static final String CONFIG_FILE = "/opt/inventoryserver/test_config.txt";
+	private static final String CONFIG_FILE = "/opt/inventoryserver/config.txt";
 
 	public static void main(String[] args) {
 		System.out.println("Inventory Server 1.0 (Java HTTP version)");
@@ -49,7 +49,7 @@ public class InventoryServer implements ConfigurationKeys {
 		System.out.println("Launch the server with:");
 		System.out.println("java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer [-p port] [-c path] [-s maxRequests] [-dbs]");
 		System.out.println("  -p  Default port is "+DEFAULT_PORT+". Use option -p to choose a different port.");
-		System.out.println("  -c  Alternative config file path. Default is '/opt/inventoryserver/test_config.txt'.");
+		System.out.println("  -c  Alternative config file path. Default is '/opt/inventoryserver/config.txt'.");
 		System.out.println("  -s  Maximum number of simultaneously handled requests (default:"+DEFAULT_THREAD_COUNT+").");
 		System.out.println("      If this is 1, requests are handled synchronously rather than in multiple threads.");
 		}
