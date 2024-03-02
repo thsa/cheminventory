@@ -34,7 +34,7 @@ public class InventoryServer implements ConfigurationKeys {
 
 	public static void main(String[] args) {
 		System.out.println("Inventory Server 1.0 (Java HTTP version)");
-		System.out.println("(C) 2022 Thomas Sander, Therwilerstr. 41, 4153 Reinach, Switzerland");
+		System.out.println("(C) 2024 Thomas Sander, Therwilerstr. 41, 4153 Reinach, Switzerland");
 		System.out.println("Launch Time: "+getDateAndTime());
 
 		if (!parseArguments(args))
@@ -44,6 +44,8 @@ public class InventoryServer implements ConfigurationKeys {
 	private static void showUsage() {
 		System.out.println("Build a table creation script from the configuration with:");
 		System.out.println("java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer -tcs [-c path]");
+		System.out.println("Create a password hash, e.g. for the admin_hash in the config file:");
+		System.out.println("java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer -hash password");
 		System.out.println("Launch the server with:");
 		System.out.println("java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer [-p port] [-c path] [-s maxRequests] [-dbs]");
 		System.out.println("  -p  Default port is "+DEFAULT_PORT+". Use option -p to choose a different port.");
@@ -61,6 +63,7 @@ public class InventoryServer implements ConfigurationKeys {
 		int threadCount = DEFAULT_THREAD_COUNT;
 		String configFilePath = CONFIG_FILE;
 		boolean createTCS = false;
+		String passwordForHash = null;
 //		boolean isTest = false;
 
 		for (int i=0; i<args.length; i++) {
@@ -89,6 +92,10 @@ public class InventoryServer implements ConfigurationKeys {
 			if (args[i].equals("-tcs")) {
 				createTCS = true;
 				continue;
+				}
+			if (args[i].equals("-hash") && args.length > i+1) {
+				System.out.println("hash: "+Authorizer.getPasswordHash(args[i+1]));
+				return true;
 				}
 //			if (args[i].equals("-t")) {
 //				isTest = true;
@@ -129,6 +136,8 @@ public class InventoryServer implements ConfigurationKeys {
 				System.out.println("ERROR: Could not initialize result builder.");
 				return false;
 			}
+
+			Authorizer.getInstance().initialize(config);
 
 			final InventorySearchEngine searchEngine = new InventorySearchEngine(data, resultBuilder);
 

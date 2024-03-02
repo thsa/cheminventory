@@ -37,7 +37,8 @@ public interface ConfigurationKeys {
 	String DATABASE_NAME = "db_name";
 	String DATABASE_USER = "db_user";
 	String DATABASE_PASSWORD = "db_password";
-
+	String ADMIN_USER = "admin_user";
+	String ADMIN_HASH = "admin_hash";
 	String COMPOUND_TABLE = "compoundTable";
 	String BOTTLE_TABLE = "bottleTable";
 

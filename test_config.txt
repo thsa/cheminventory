@@ -8,6 +8,11 @@ db_name = cheminventory
 db_user = inventory
 db_password = inventory
 
+# Optional definition of admin user, who is allowed to make changes in the database
+# The hash code can be generated from any password by the inventory server itself using the -hash option
+# admin_user = admin
+# admin_hash = a25ce608f24415ae2
+
 # The server engine keeps all chemical structure information in memory to allow for fast structure searches.
 # Alphanumerical column data is also kept in memory, if it shall be retrievable or usable for queries.
 # The following comma separated list starts with the display name and the SQL table name of the compound table.

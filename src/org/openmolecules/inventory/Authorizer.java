@@ -1,21 +1,34 @@
 package org.openmolecules.inventory;
 
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.TreeMap;
-import java.util.UUID;
+import com.actelion.research.chem.CanonizerUtil;
+
+import java.util.*;
 
 public class Authorizer {
 	private static Authorizer sInstance;
 
 	private TreeMap<String,Token> mTokenMap;
 	private TreeMap<String,LoginTries> mLoginTriesMap;
+	private String mAdminUser,mAdminHash;
 
 	public static Authorizer getInstance() {
 		if (sInstance == null)
 			sInstance = new Authorizer();
 
 		return sInstance;
+	}
+
+	public void initialize(Properties config) {
+		String user = config.getProperty(ConfigurationKeys.ADMIN_USER, "");
+		String hash = config.getProperty(ConfigurationKeys.ADMIN_HASH, "");
+		if (!user.isEmpty() && !hash.isEmpty()) {
+			mAdminUser = user;
+			mAdminHash = hash;
+		}
+	}
+
+	public static String getPasswordHash(String password) {
+		return (password == null || password.isEmpty()) ? "" : Long.toHexString(CanonizerUtil.StrongHasher.hash(password));
 	}
 
 	private Authorizer() {
@@ -46,6 +59,11 @@ public class Authorizer {
 	}
 
 	public String createToken(String user, String password) {
+		if (mAdminUser != null && mAdminHash != null && mAdminUser.equals(user) && mAdminHash.equals(getPasswordHash(password))) {
+			Token token = new Token(Token.ADMIN);
+			mTokenMap.put(token.key, token);
+			return token.key;
+		}
 		if (DatabaseConnector.isAuthorized(user, password)) {
 			Token token = new Token();
 			mTokenMap.put(token.key, token);
@@ -60,12 +78,21 @@ public class Authorizer {
 	}
 
 	private class Token	{
+		protected static final int READ = 0;
+		protected static final int WRITE = 1;
+		protected static final int ADMIN = 2;
 		private static final long VALIDITY = 3600000;   // one hour
 
 		String key;
+		int access;
 		long millis;
 
 		public Token() {
+			this(WRITE);
+		}
+
+		public Token(int type) {
+			access = type;
 			millis = System.currentTimeMillis();
 			key = UUID.randomUUID().toString();
 		}
