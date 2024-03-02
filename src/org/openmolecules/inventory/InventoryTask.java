@@ -201,7 +201,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 			TreeMap<String,String> columnValueMap = getColumnValues(table);
 			byte[] primaryKey = extractPrimaryKey(columnValueMap, table);
 
-			if (!what.equals(REQUEST_DELETE) && columnValueMap.size() == 0) {
+			if (!what.equals(REQUEST_DELETE) && columnValueMap.isEmpty()) {
 				if (what.equals(REQUEST_INSERT))
 					createErrorResponse("Insert row into '"+table.getName()+"': No column values found.");
 				else
@@ -353,6 +353,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 	}
 
 	private TreeMap<String,String> getColumnValues(AlphaNumTable table) {
+		@SuppressWarnings("unchecked")
 		TreeMap<String,String> columnValueMap = (TreeMap<String,String>)getRequestObject(KEY_QUERY);
 		if (columnValueMap == null) {
 			columnValueMap = new TreeMap<>();
