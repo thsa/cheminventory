@@ -67,7 +67,7 @@ public class Authorizer {
 		if (DatabaseConnector.isAuthorized(user, password)) {
 			Token token = new Token();
 			mTokenMap.put(token.key, token);
-			return token.key;
+			return token.toString();
 		}
 		return null;
 	}
@@ -78,10 +78,12 @@ public class Authorizer {
 	}
 
 	private class Token	{
+		private final String[] ACCESS = { "read", "write", "admin" };
 		protected static final int READ = 0;
 		protected static final int WRITE = 1;
 		protected static final int ADMIN = 2;
 		private static final long VALIDITY = 3600000;   // one hour
+		private static final long GRACE_PERIOD = 300000;   // 5 minutes
 
 		String key;
 		int access;
@@ -98,7 +100,12 @@ public class Authorizer {
 		}
 
 		public boolean isValid(long now) {
-			return millis > now - VALIDITY;
+			return millis + VALIDITY + GRACE_PERIOD > now;
+		}
+
+		@Override
+		public String toString() {
+			return key.concat(":").concat(ACCESS[access]).concat(":").concat(Long.toString(VALIDITY));
 		}
 	}
 

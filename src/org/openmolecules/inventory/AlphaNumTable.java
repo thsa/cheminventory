@@ -307,7 +307,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 				if (mColumnType[i] == COLUMN_TYPE_TEXT
 				 || mColumnType[i] == COLUMN_TYPE_ID
 				 || mColumnType[i] == COLUMN_TYPE_DATE) {
-					if (value.length() == 0 && mColumnType[i] == COLUMN_TYPE_DATE) {
+					if (value.isEmpty() && mColumnType[i] == COLUMN_TYPE_DATE) {
 						sql.append("NULL");
 					}
 					else {
@@ -319,8 +319,8 @@ public class AlphaNumTable implements ConfigurationKeys {
 				else {
 					sql.append(value);
 				}
+				count++;
 			}
-			count++;
 		}
 
 		sql.append(")");

@@ -28,8 +28,7 @@ public class DatabaseConnector {
 	private static DatabaseConnector sInstance;
 
 	private Connection mConnection;
-	private String mUser,mPassword;
-	private String mRecentUpdate;
+	private final String mUser,mPassword;
 	private long mLastKnownValidConnection;
 
 	public static void setConnectString(String connectString) {

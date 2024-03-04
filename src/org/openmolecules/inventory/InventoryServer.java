@@ -33,7 +33,7 @@ public class InventoryServer implements ConfigurationKeys {
 	private static final String CONFIG_FILE = "/opt/inventoryserver/config.txt";
 
 	public static void main(String[] args) {
-		System.out.println("Inventory Server 1.0 (Java HTTP version)");
+		System.out.println("Inventory Server 1.0 (Java HTTP(S) version)");
 		System.out.println("(C) 2024 Thomas Sander, Therwilerstr. 41, 4153 Reinach, Switzerland");
 		System.out.println("Launch Time: "+getDateAndTime());
 
@@ -43,15 +43,15 @@ public class InventoryServer implements ConfigurationKeys {
 
 	private static void showUsage() {
 		System.out.println("Build a table creation script from the configuration with:");
-		System.out.println("java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer -tcs [-c path]");
+		System.out.println("  java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer -tcs [-c path]");
 		System.out.println("Create a password hash, e.g. for the admin_hash in the config file:");
-		System.out.println("java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer -hash password");
+		System.out.println("  java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer -hash password");
 		System.out.println("Launch the server with:");
-		System.out.println("java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer [-p port] [-c path] [-s maxRequests] [-dbs]");
-		System.out.println("  -p  Default port is "+DEFAULT_PORT+". Use option -p to choose a different port.");
-		System.out.println("  -c  Alternative config file path. Default is '/opt/inventoryserver/config.txt'.");
-		System.out.println("  -s  Maximum number of simultaneously handled requests (default:"+DEFAULT_THREAD_COUNT+").");
-		System.out.println("      If this is 1, requests are handled synchronously rather than in multiple threads.");
+		System.out.println("  java -cp inventoryserver.jar org.openmolecules.inventory.InventoryServer [-p port] [-c path] [-s maxRequests] [-dbs]");
+		System.out.println("    -p  Default port is "+DEFAULT_PORT+". Use option -p to choose a different port.");
+		System.out.println("    -c  Alternative config file path. Default is '/opt/inventoryserver/config.txt'.");
+		System.out.println("    -s  Maximum number of simultaneously handled requests (default:"+DEFAULT_THREAD_COUNT+").");
+		System.out.println("        If this is 1, requests are handled synchronously rather than in multiple threads.");
 		}
 
 	private static String getDateAndTime() {
@@ -63,7 +63,6 @@ public class InventoryServer implements ConfigurationKeys {
 		int threadCount = DEFAULT_THREAD_COUNT;
 		String configFilePath = CONFIG_FILE;
 		boolean createTCS = false;
-		String passwordForHash = null;
 //		boolean isTest = false;
 
 		for (int i=0; i<args.length; i++) {
