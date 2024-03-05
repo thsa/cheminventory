@@ -50,6 +50,19 @@ public class InventorySearchEngine implements ConfigurationKeys,InventoryServerC
 		compileQueryColumns();
 		}
 
+	public String getSummary() {
+		StringBuilder status = new StringBuilder(InventoryServer.getVersion());
+		status.append('\n');
+		status.append("Launched ").append(InventoryServer.getLaunchDate()).append(" on host '").append(InventoryServer.getHostName()).append("'\n");
+		status.append(mData.getCompoundTable().getRowCount()).append(" ").append(mData.getCompoundTable().getName()).append("s");
+		status.append(", ").append(mData.getBottleTable().getRowCount()).append(" ").append(mData.getBottleTable().getName()).append("s");
+		for (AlphaNumTable table:mData.getTables())
+			if (table != mData.getCompoundTable() && table != mData.getBottleTable())
+				status.append(", ").append(table.getRowCount()).append(" ").append(table.getName()).append("s");
+		status.append('\n');
+		return status.toString();
+		}
+
 	public String getTableSpecification() {
 		StringBuilder erm = new StringBuilder();
 		for (AlphaNumTable table:mData.getTables()) {

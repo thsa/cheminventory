@@ -59,6 +59,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 				  + "You may attach key-value pairs as parameters to define your request:\n\n"
 				  + "key 'what':\n"
 				  + "  value 'help': Returns this help page as text.\n\n"
+				  + "  value 'status': Returns status text with row counts for every table.\n\n"
 				  + "  value 'erm': Returns a specification of all tables and columns accessible by this server.\n\n"
 				  + "  value 'query': Defines a structure query and requires more parameters:\n"
 				  + "    key 'smiles': Optional parameter to attach a structure search to the query.\n"
@@ -115,6 +116,11 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 				  + "  http(s)://some.server.com/?what=query&smiles=c1ccccc1O&current_amount=>5000&s.name=ABC\n"
 				  + "    Retrieve all bottles from supplier 'ABC' with a phenol substructure and a current amount above 5000 mg.\n\n"
 					);
+			return;
+			}
+
+		if (what.equals(REQUEST_SUMMARY)) {
+			createTextResponse(mSearchEngine.getSummary());
 			return;
 			}
 

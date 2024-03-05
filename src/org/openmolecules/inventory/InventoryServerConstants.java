@@ -28,6 +28,7 @@ public interface InventoryServerConstants {
 	String LOG_FILE_NAME = INSTALLATION_PATH + "log/inventory_"+System.currentTimeMillis()+".log";
 
 	String REQUEST_HELP = "help";
+	String REQUEST_SUMMARY = "summary";
 	String REQUEST_ERM = "erm";
 	String REQUEST_ROW = "row";
 	String REQUEST_TEMPLATE = "template";

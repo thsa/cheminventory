@@ -1,10 +1,18 @@
-rm -rf ./bin
-mkdir ./bin
-javac -d ./bin -sourcepath ./src -classpath ./lib/openchemlib.jar:./lib/simple.jar:./lib/mysql-connector.jar src/org/openmolecules/inventory/InventoryServer.java
-cd ./bin
-jar xf ../lib/openchemlib.jar
-jar xf ../lib/mysql-connector.jar
-jar xf ../lib/simple.jar
-cd ..
-jar -cfm inventoryserver.jar manifest_additions.txt -C ./bin .
-chmod 755 inventoryserver.jar
+java -version |& grep '1.8.0' &> /dev/null
+if [ $? == 0 ]; then
+  rm -rf ./bin
+  mkdir ./bin
+  javac -d ./bin -sourcepath ./src -classpath ./lib/openchemlib.jar:./lib/simple.jar:./lib/mysql-connector.jar src/org/openmolecules/inventory/InventoryServer.java
+  cd ./bin
+  jar xf ../lib/openchemlib.jar
+  jar xf ../lib/mysql-connector.jar
+  jar xf ../lib/simple.jar
+  cd ..
+  echo $(date +%e-%b-%Y) > ./bin/builtDate.txt
+  jar -cfm inventoryserver.jar manifest_additions.txt -C ./bin .
+  chmod 755 inventoryserver.jar
+  ls -l inventoryserver.jar
+else
+  echo "java version must be 1.8"
+  java -version |& grep version
+fi

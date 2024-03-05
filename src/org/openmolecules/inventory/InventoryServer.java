@@ -21,8 +21,10 @@ package org.openmolecules.inventory;
 import org.openmolecules.comm.ServerCommunicator;
 import org.openmolecules.comm.ServerTaskFactory;
 
-import java.io.File;
-import java.io.FileReader;
+import java.io.*;
+import java.net.InetAddress;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Properties;
@@ -31,11 +33,14 @@ public class InventoryServer implements ConfigurationKeys {
 	private static final int DEFAULT_PORT = 8092;
 	private static final int DEFAULT_THREAD_COUNT = 4;
 	private static final String CONFIG_FILE = "/opt/inventoryserver/config.txt";
+	private static final String VERSION = "Inventory Server 1.0; HTTP(S) version";
+
+	private static String sVersion,sLaunchDate,sHostName;
 
 	public static void main(String[] args) {
-		System.out.println("Inventory Server 1.0 (Java HTTP(S) version)");
+		System.out.println(getVersion());
 		System.out.println("(C) 2024 Thomas Sander, Therwilerstr. 41, 4153 Reinach, Switzerland");
-		System.out.println("Launch Time: "+getDateAndTime());
+		System.out.println("Launch Time: "+getLaunchDate());
 
 		if (!parseArguments(args))
 			showUsage();
@@ -54,8 +59,35 @@ public class InventoryServer implements ConfigurationKeys {
 		System.out.println("        If this is 1, requests are handled synchronously rather than in multiple threads.");
 		}
 
-	private static String getDateAndTime() {
-	    return new SimpleDateFormat("d-MMM-yyyy HH:mm:ss").format(Calendar.getInstance().getTime());
+	public static String getVersion() {
+		if (sVersion == null) {
+			sVersion = VERSION;
+			URL url = InventoryServer.class.getResource("/builtDate.txt");
+			if (url != null) {
+				try {
+					BufferedReader reader = new BufferedReader(new InputStreamReader(url.openStream()));
+					sVersion = sVersion.concat(" (built " + reader.readLine() + ")");
+					reader.close();
+					}
+				catch (IOException e) {}
+				}
+			}
+		return sVersion;
+		}
+
+	public static String getHostName() {
+		if (sHostName == null) {
+			sHostName = "Unknown";
+			try { sHostName = InetAddress.getLocalHost().getHostName(); } catch (UnknownHostException ignored) {}
+			}
+		return sHostName;
+		}
+
+	public static String getLaunchDate() {
+		if (sLaunchDate == null)
+			sLaunchDate = new SimpleDateFormat("d-MMM-yyyy HH:mm:ss").format(Calendar.getInstance().getTime());
+
+		return sLaunchDate;
 		}
 
 	private static boolean parseArguments(String[] args) {

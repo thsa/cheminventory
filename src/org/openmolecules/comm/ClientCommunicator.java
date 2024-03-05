@@ -170,7 +170,7 @@ public abstract class ClientCommunicator extends CommunicationHelper {
 		if (!isUseSecondaryServer() || mSessionServerURL != null) {
 			try {
 				String url = (mSessionServerURL != null) ? mSessionServerURL : getPrimaryServerURL();
-				Object response = getResponse(url, request, keyValuePair);
+				Object response = getResponseWithURL(url, request, keyValuePair);
 				if (response != null)
 					return response;
 				}
@@ -200,7 +200,7 @@ public abstract class ClientCommunicator extends CommunicationHelper {
 
 		if (mayUseSecondaryServer) {
 			try {
-				Object response = getResponse(getSecondaryServerURL(), request, keyValuePair);
+				Object response = getResponseWithURL(getSecondaryServerURL(), request, keyValuePair);
 				if (response != null) {
 					setUseSecondaryServer();
 					return response;
@@ -218,7 +218,7 @@ public abstract class ClientCommunicator extends CommunicationHelper {
 		return null;
 		}
 
-	private Object getResponse(String serverURL, String request, String... keyValuePair) throws IOException {
+	public Object getResponseWithURL(String serverURL, String request, String... keyValuePair) throws IOException {
 		if (mWithSessions && mSessionID == null) {
 			getNewSession();
 			if (mSessionID == null)
