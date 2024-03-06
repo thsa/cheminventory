@@ -7,8 +7,8 @@ import java.util.*;
 public class Authorizer {
 	private static Authorizer sInstance;
 
-	private TreeMap<String,Token> mTokenMap;
-	private TreeMap<String,LoginTries> mLoginTriesMap;
+	private final TreeMap<String,Token> mTokenMap;
+	private final TreeMap<String,LoginTries> mLoginTriesMap;
 	private String mAdminUser,mAdminHash;
 
 	public static Authorizer getInstance() {
@@ -39,12 +39,19 @@ public class Authorizer {
 			@Override
 			public void run() {
 				long now = System.currentTimeMillis();
+				ArrayList<String> keysToRemove = new ArrayList<>();
 				for (String key:mTokenMap.keySet())
 					if (!mTokenMap.get(key).isValid(now))
-						mTokenMap.remove(key);
+						keysToRemove.add(key);
+				for (String key:keysToRemove)
+					mTokenMap.remove(key);
+
+				keysToRemove.clear();
 				for (String key:mLoginTriesMap.keySet())
 					if (mLoginTriesMap.get(key).isOutdated(now))
-						mLoginTriesMap.remove(key);
+						keysToRemove.add(key);
+				for (String key:keysToRemove)
+					mLoginTriesMap.remove(key);
 			}
 		}, Token.VALIDITY, Token.VALIDITY);
 	}
@@ -77,7 +84,7 @@ public class Authorizer {
 		return token != null && token.isValid(System.currentTimeMillis());
 	}
 
-	private class Token	{
+	private static class Token	{
 		private final String[] ACCESS = { "read", "write", "admin" };
 		protected static final int READ = 0;
 		protected static final int WRITE = 1;
@@ -109,7 +116,7 @@ public class Authorizer {
 		}
 	}
 
-	private class LoginTries {
+	private static class LoginTries {
 		private static final long DELAY = 60000;
 		private static final long MAX = 5;
 

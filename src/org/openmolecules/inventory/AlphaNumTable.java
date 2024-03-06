@@ -44,7 +44,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 	 * @return
 	 */
 	public boolean initialize(String tableDef) {
-		if (tableDef == null || tableDef.length() == 0)
+		if (tableDef == null || tableDef.isEmpty())
 			return false;
 
 		mSpecification = tableDef;
@@ -104,17 +104,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 				columnIndex = currentColumnIndex++;
 
 			String typeString = entry[i].substring(0, index+1);
-			mColumnType[columnIndex] = -1;
-			for (int type=0; type<COLUMN_TYPES.length; type++) {
-				String code = COLUMN_TYPES[type];
-				if (typeString.startsWith(code)) {
-					mColumnType[columnIndex] = type;
-					if (type == COLUMN_TYPE_FK)
-						mForeignKey[columnIndex] = new ForeignKey(typeString);
-					break;
-				}
-			}
-			if (mColumnType[columnIndex] == -1) {
+			if (!setColumnType(columnIndex, typeString)) {
 				System.out.println("Incorrect column type: "+entry[i]);
 				return false;
 			}
@@ -134,6 +124,20 @@ public class AlphaNumTable implements ConfigurationKeys {
 		}
 
 		return true;
+	}
+
+	protected boolean setColumnType(int columnIndex, String typeString) {
+		mColumnType[columnIndex] = -1;
+		for (int type=0; type<COLUMN_TYPES.length; type++) {
+			String code = COLUMN_TYPES[type];
+			if (typeString.startsWith(code)) {
+				mColumnType[columnIndex] = type;
+				if (type == COLUMN_TYPE_FK)
+					mForeignKey[columnIndex] = new ForeignKey(typeString);
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public String getSpecification() {
@@ -352,7 +356,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 		return null;
 	}
 
-	protected String updateRow(TreeMap<String,String> columnValueMap, byte[] primaryKey) {
+	protected String updateRow(TreeMap<String,String> columnValueMap, byte[] primaryKey, boolean issueErrorIfNoChange) {
 		AlphaNumRow row = mPKToRowMap.get(primaryKey);
 
 		StringBuilder sql = new StringBuilder("UPDATE ");
@@ -384,7 +388,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 		}
 
 		if (count == 0)
-			return "No changes found in update request for table '"+mTableDisplayName+"'.";
+			return issueErrorIfNoChange ? "No changes found in update request for table '"+mTableDisplayName+"'." : null;
 
 		sql.append(" WHERE ");
 		sql.append(mColumnName[mPrimaryKeyColumn]);

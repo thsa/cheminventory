@@ -19,9 +19,11 @@
 package org.openmolecules.inventory;
 
 import com.actelion.research.chem.IDCodeParser;
+import com.actelion.research.chem.MolecularFormula;
 import com.actelion.research.chem.StereoMolecule;
 import com.actelion.research.chem.descriptor.DescriptorHandlerLongFFP512;
 import com.actelion.research.chem.descriptor.DescriptorHandlerSkeletonSpheres;
+import com.actelion.research.util.DoubleFormat;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -33,8 +35,12 @@ public class CompoundTable extends AlphaNumTable {
 	private static final String[] CREATE_COLUMNS = {
 			"idcode varchar(255)", "idcoords varchar(255)", "fragfp varchar(255)", "skelspheres varchar(1023)" };
 
+	private int mMWColumn, mMFColumn;
+
 	public CompoundTable() {
 		super();
+		mMWColumn = -1;
+		mMFColumn = -1;
 	}
 
 	@Override
@@ -50,6 +56,18 @@ public class CompoundTable extends AlphaNumTable {
 			script.append(columndef);
 			script.append(",\n");
 		}
+	}
+
+	@Override protected boolean setColumnType(int columnIndex, String typeString) {
+		if (typeString.equals("[mw]")) {
+			mMWColumn = columnIndex;
+			typeString = "[num]";
+		}
+		if (typeString.equals("[mf]")) {
+			mMFColumn = columnIndex;
+			typeString = "[text]";
+		}
+		return super.setColumnType(columnIndex, typeString);
 	}
 
 	@Override
@@ -72,35 +90,67 @@ public class CompoundTable extends AlphaNumTable {
 	}
 
 	@Override
-	protected String updateRow(TreeMap<String,String> columnValueMap, byte[] primaryKey) {
-		String errorMsg = super.updateRow(columnValueMap, primaryKey);
+	protected String updateRow(TreeMap<String,String> columnValueMap, byte[] primaryKey, boolean issueErrorIfNoChange) {
+		String idcode = columnValueMap.get("idcode");
+		String coords = columnValueMap.get("idcoords");
+		if (idcode != null && idcode.isEmpty())
+			idcode = null;
+		if (coords != null && coords.isEmpty())
+			coords = null;
+		StereoMolecule mol = (idcode == null) ? null : new IDCodeParser().getCompactMolecule(idcode, coords);
+		calculateMWAndMF(columnValueMap, mol);
+
+		boolean structureChanged = false;
+		CompoundRow row = (CompoundRow)getRow(primaryKey);
+		if (row.getIDCode() == null || !new String(row.getIDCode()).equals(idcode))
+			structureChanged = true;
+		if (row.getCoords() == null || !new String(row.getCoords()).equals(coords))
+			structureChanged = true;
+
+		String errorMsg = super.updateRow(columnValueMap, primaryKey, issueErrorIfNoChange && !structureChanged);
 		if (errorMsg != null)
 			return errorMsg;
 
-		String idcode = columnValueMap.get("idcode");
-		String coords = columnValueMap.get("idcoords");
-		if (idcode != null)
-			return updateIDCodeAndDescriptors(idcode, coords, primaryKey);
+		if (mol != null)
+			return updateIDCodeAndDescriptors(mol, idcode, coords, primaryKey);
 
 		return null;
 	}
 
 	@Override
 	protected String insertRow(TreeMap<String,String> columnValueMap, byte[][] newPrimaryKeyHolder) {
+		String idcode = columnValueMap.get("idcode");
+		String coords = columnValueMap.get("idcoords");
+		if (idcode != null && idcode.isEmpty())
+			idcode = null;
+		if (coords != null && coords.isEmpty())
+			coords = null;
+		StereoMolecule mol = (idcode == null) ? null : new IDCodeParser().getCompactMolecule(idcode, coords);
+		calculateMWAndMF(columnValueMap, mol);
+
 		String errorMsg = super.insertRow(columnValueMap, newPrimaryKeyHolder);
 		if (errorMsg != null)
 			return errorMsg;
 
-		String idcode = columnValueMap.get("idcode");
-		String coords = columnValueMap.get("idcoords");
-		if (idcode != null)
-			return updateIDCodeAndDescriptors(idcode, coords, newPrimaryKeyHolder[0]);
+		if (mol != null)
+			return updateIDCodeAndDescriptors(mol, idcode, coords, newPrimaryKeyHolder[0]);
 
 		return null;
 	}
 
-	private String updateIDCodeAndDescriptors(String idcode, String coords, byte[] primaryKey) {
-		StereoMolecule mol = new IDCodeParser().getCompactMolecule(idcode, coords);
+	private void calculateMWAndMF(TreeMap<String,String> columnValueMap, StereoMolecule mol) {
+		if (mol != null && (mMFColumn != -1 || mMWColumn != -1)) {
+			MolecularFormula formula = new MolecularFormula(mol);
+			if (mMFColumn != -1)
+				columnValueMap.put(getColumnName(mMFColumn), formula.getFormula());
+			if (mMWColumn != -1)
+				columnValueMap.put(getColumnName(mMWColumn), DoubleFormat.toString(formula.getRelativeWeight(), 4));
+		}
+	}
+
+	private String updateIDCodeAndDescriptors(StereoMolecule mol, String idcode, String coords, byte[] primaryKey) {
+		if (coords == null)
+			coords = "";
 		long[] ffp = DescriptorHandlerLongFFP512.getDefaultInstance().createDescriptor(mol);
 		String encodedFFP = DescriptorHandlerLongFFP512.getDefaultInstance().encode(ffp);
 		byte[] skelSpheres = DescriptorHandlerSkeletonSpheres.getDefaultInstance().createDescriptor(mol);
@@ -108,13 +158,10 @@ public class CompoundTable extends AlphaNumTable {
 
 		StringBuilder sql = new StringBuilder("UPDATE ");
 		sql.append(getLongName());
-
 		sql.append(" SET idcode='");
 		sql.append(idcode);
-		if (coords != null) {
-			sql.append("',idcoords='");
-			sql.append(coords);
-		}
+		sql.append("',idcoords='");
+		sql.append(coords);
 		sql.append("',fragfp='");
 		sql.append(encodedFFP);
 		sql.append("',skelspheres='");

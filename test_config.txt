@@ -8,7 +8,7 @@ db_name = cheminventory
 db_user = inventory
 db_password = inventory
 
-# Optional definition of admin user, who is allowed to make changes in the database
+# Optional definition of an admin user, who is allowed to make changes in the database
 # The hash code can be generated from any password by the inventory server itself using the -hash option
 # admin_user = admin
 # admin_hash = a25ce608f24415ae2
@@ -26,20 +26,23 @@ db_password = inventory
 # Then every table column is specified by two entries: '[<type>]<display_column_name>' and
 # '<database_column_name>'. Every table must contain exactly one primary key column tagged with '[pk]'.
 # Foreign key tags must contain the referenced column name as '[fk:<short table name>.<column name>]'.
-# Other allowed tags are [text]', '[num]', and '[date]'. In addition a table may have one column with
+# Other allowed tags are [text]', '[num]', and '[date]'. In addition, a table may have one column with
 # '[id]' tag that defines a text column containing unique and not null values, which may serve as row
 # identifier shown to users. If no '[id]' column exists, then the primary key is used as visible row
 # identifier.
+# [mw] and [mf] are special column types for compound tables. If these are used and if a chemical structure
+# if given when a row is updated or created, then molecular weight and/or formula are automatically created
+# or updated.
 compoundTable = Compound, cheminventory.compound c, \
  [pk]Compound ID, compound_id, \
  [text]Compound Name, name, \
  [text]CAS No, cas_no, \
- [num]Molweight, molweight, \
- [text]Formula, formula
+ [mw]Molweight, molweight, \
+ [mf]Formula, formula
 
 # The 'bottleTable' property defines the database name and all columns of the bottle table, which shall
 # be known to this server. The bottle table is the central table of the inventory database. It references
-# the compound table and it may reference additional tables keeping details of locations, suppliers, etc.
+# the compound table, and it may reference additional tables keeping details of locations, suppliers, etc.
 # For every referenced table the bottle table must have a type in the format '[fk:<table_alias>.<column_name_pk>]'
 # that describes the references table and its primary key column.
 bottleTable = Bottle, cheminventory.bottle b, \

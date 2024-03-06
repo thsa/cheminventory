@@ -238,7 +238,7 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 							+table.getColumnName(table.getPrimaryKeyColumn())+":"+new String(newPrimaryKeyHolder[0]));
 			}
 			else {  // UPDATE
-				String errorMsg = table.updateRow(columnValueMap, primaryKey);
+				String errorMsg = table.updateRow(columnValueMap, primaryKey, true);
 				if (errorMsg != null)
 					createErrorResponse(errorMsg);
 				else
