@@ -19,8 +19,8 @@
 package org.openmolecules.inventory;
 
 public class AlphaNumRow {
-	private byte[][] mData;
-	private float[] mFloat;
+	private final byte[][] mData;
+	private final float[] mFloat;
 	private AlphaNumRow[] mReferencedRow;
 
 	public AlphaNumRow(int columnCount) {
@@ -29,7 +29,7 @@ public class AlphaNumRow {
 	}
 
 	public void setData(int column, byte[] data) {
-		mData[column] = data;
+		mData[column] = (data != null && data.length == 0) ? null : data;
 	}
 
 	public byte[] getData(int column) {

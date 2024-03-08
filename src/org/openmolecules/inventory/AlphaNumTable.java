@@ -304,24 +304,30 @@ public class AlphaNumTable implements ConfigurationKeys {
 		sql.append(") VALUES ");
 
 		count = 0;
-		for (int i=0; i<mColumnName.length; i++) {
-			String value = columnValueMap.get(mColumnName[i]);
+		for (int column=0; column<mColumnName.length; column++) {
+			String value = columnValueMap.get(mColumnName[column]);
 			if (value != null) {
+				String errorMsg = checkValue(value, column);
+				if (errorMsg != null)
+					return errorMsg;
+				if (column == mIDColumn && mIDToPKMap.containsKey(value.getBytes(StandardCharsets.UTF_8)))
+					return mColumnName[column].concat(" '".concat(value).concat("' does already exist."));
+
 				sql.append(count == 0 ? '(' : ",");
-				if (mColumnType[i] == COLUMN_TYPE_TEXT
-				 || mColumnType[i] == COLUMN_TYPE_ID
-				 || mColumnType[i] == COLUMN_TYPE_DATE) {
-					if (value.isEmpty() && mColumnType[i] == COLUMN_TYPE_DATE) {
-						sql.append("NULL");
-					}
-					else {
+				if (value.isEmpty()) {
+					sql.append("NULL");
+				}
+				else {
+					if (mColumnType[column] == COLUMN_TYPE_TEXT
+					 || mColumnType[column] == COLUMN_TYPE_ID
+					 || mColumnType[column] == COLUMN_TYPE_DATE) {
 						sql.append('\'');
 						sql.append(value);
 						sql.append('\'');
 					}
-				}
-				else {
-					sql.append(value);
+					else {
+						sql.append(value);
+					}
 				}
 				count++;
 			}
@@ -340,12 +346,14 @@ public class AlphaNumTable implements ConfigurationKeys {
 			int column = getColumnIndex(columnName);
 			String value = columnValueMap.get(columnName);
 			if (value != null) {
-				row.setData(column, value.getBytes(StandardCharsets.UTF_8));
+				row.setData(column, value.isEmpty() ? null : value.getBytes(StandardCharsets.UTF_8));
 				if (mColumnType[column] == COLUMN_TYPE_NUM) {
 					try {
 						row.setFloat(Float.parseFloat(value), column);
 					}
-					catch (NumberFormatException nfe) {}
+					catch (NumberFormatException nfe) {
+						row.setFloat(Float.NaN, column);
+					}
 				}
 			}
 		}
@@ -364,23 +372,36 @@ public class AlphaNumTable implements ConfigurationKeys {
 		sql.append(" SET");
 
 		int count = 0;
-		for (int i=0; i<mColumnName.length; i++) {
-			String value = columnValueMap.get(mColumnName[i]);
+		for (int column=0; column<mColumnName.length; column++) {
+			String value = columnValueMap.get(mColumnName[column]);
 			if (value != null) {
-				byte[] currentValue = row.getData(getColumnIndex(mColumnName[i]));
-				if (currentValue == null || !value.equals(new String(currentValue))) {
+				String errorMsg = checkValue(value, column);
+				if (errorMsg != null)
+					return errorMsg;
+
+				byte[] currentValue = row.getData(getColumnIndex(mColumnName[column]));
+				if ((currentValue == null && !value.isEmpty())
+				 || (currentValue != null && !value.equals(new String(currentValue)))) {
+					if (column == mIDColumn && mIDToPKMap.containsKey(value.getBytes(StandardCharsets.UTF_8)))
+						return mColumnName[column].concat(" '".concat(value).concat("' does already exist."));
+
 					sql.append(count == 0 ? ' ' : ',');
-					sql.append(mColumnName[i]);
+					sql.append(mColumnName[column]);
 					sql.append('=');
-					if (mColumnType[i] == COLUMN_TYPE_TEXT
-					 || mColumnType[i] == COLUMN_TYPE_ID
-					 || mColumnType[i] == COLUMN_TYPE_DATE) {
-						sql.append('\'');
-						sql.append(value);
-						sql.append('\'');
+					if (value.isEmpty()) {
+						sql.append("NULL");
 					}
 					else {
-						sql.append(value);
+						if (mColumnType[column] == COLUMN_TYPE_TEXT
+						 || mColumnType[column] == COLUMN_TYPE_ID
+						 || mColumnType[column] == COLUMN_TYPE_DATE) {
+							sql.append('\'');
+							sql.append(value);
+							sql.append('\'');
+						}
+						else {
+							sql.append(value);
+						}
 					}
 					count++;
 				}
@@ -399,11 +420,10 @@ public class AlphaNumTable implements ConfigurationKeys {
 		if (errorMsg != null)
 			return errorMsg;
 
-		for (int i=0; i<mColumnName.length; i++) {
-			String newValue = columnValueMap.get(mColumnName[i]);
+		for (int column=0; column<mColumnName.length; column++) {
+			String newValue = columnValueMap.get(mColumnName[column]);
 			if (newValue != null) {
-				int column = getColumnIndex(mColumnName[i]);
-				byte[] value = newValue.getBytes(StandardCharsets.UTF_8);
+				byte[] value = newValue.isEmpty() ? null : newValue.getBytes(StandardCharsets.UTF_8);
 				if (column == mIDColumn) {
 					byte[] pk = mIDToPKMap.remove(row.getData(mIDColumn));
 					if (pk != null) // shouldn't be null
@@ -414,9 +434,29 @@ public class AlphaNumTable implements ConfigurationKeys {
 					try {
 						row.setFloat(Float.parseFloat(newValue), column);
 					}
-					catch (NumberFormatException nfe) {}
+					catch (NumberFormatException nfe) {
+						row.setFloat(Float.NaN, column);
+					}
 				}
 			}
+		}
+		return null;
+	}
+
+	private String checkValue(String value, int column) {
+		if (column == mIDColumn && value.isEmpty())
+			return mColumnName[column].concat(" must not be empty.");
+		if (mColumnType[column] == COLUMN_TYPE_NUM && !value.isEmpty()) {
+			try {
+				Float.parseFloat(value);
+			}
+			catch (NumberFormatException nfe) {
+				return mColumnName[column].concat(" '").concat(value).concat("' is not numerical.");
+			}
+		}
+		if (mColumnType[column] == COLUMN_TYPE_DATE && !value.isEmpty()) {
+			if (!value.matches("\\d\\d\\d\\d-\\d\\d-\\d\\d"))
+				return mColumnName[column].concat(" '").concat(value).concat("' must be given as 'YYYY-MM-DD'.");
 		}
 		return null;
 	}

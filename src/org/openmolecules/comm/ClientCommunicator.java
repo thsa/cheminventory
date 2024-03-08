@@ -1,17 +1,13 @@
 /*
- * Copyright 2022, Thomas Sander, openmolecules.org
+ * @(#)ClientCommunicator.java
  *
- * This file is part of the Simple-Server, a light-weight extension of Simpleframework by Niall Gallagher.
+ * Copyright 2013 openmolecules.org, Inc. All Rights Reserved.
  *
- * Simple-Server is free software: you can redistribute it and/or modify it under the
- * terms of the GNU General Public License as published by the Free Software Foundation,
- * either version 3 of the License, or (at your option) any later version.
- *
- * Simple-Server is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
- * without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
- * See the GNU General Public License for more details.
- * You should have received a copy of the GNU General Public License along with Simple-Server.
- * If not, see http://www.gnu.org/licenses/.
+ * NOTICE: All information contained herein is, and remains the property
+ * of openmolecules.org.  The intellectual and technical concepts contained
+ * herein are proprietary to openmolecules.org.
+ * Actelion Pharmaceuticals Ltd. is granted a non-exclusive, non-transferable
+ * and timely unlimited usage license.
  *
  * @author Thomas Sander
  */
@@ -23,10 +19,11 @@ import java.io.IOException;
 import java.net.*;
 
 public abstract class ClientCommunicator extends CommunicationHelper {
-	private static final int CONNECT_TIME_OUT = 3000;
-	private static final int READ_TIME_OUT = 10000;
+	private static final int CONNECT_TIME_OUT = 5000;
+	private static final int READ_TIME_OUT = 600000;
 
     private boolean	mWithSessions;
+	private int mConnectTimeOut,mReadTimeOut;
 	private String	mSessionID,mSessionServerURL,mAppicationName;
 
 	public abstract String getPrimaryServerURL();
@@ -55,7 +52,17 @@ public abstract class ClientCommunicator extends CommunicationHelper {
 	public ClientCommunicator(boolean withSessions, String applicationName) {
 		mWithSessions = withSessions;
 		mAppicationName = (applicationName == null) ? "unknown" : applicationName;
+		mConnectTimeOut = CONNECT_TIME_OUT;
+		mReadTimeOut = READ_TIME_OUT;
 		}
+
+	public void setConnectTimeOut(int timeOut) {
+		mConnectTimeOut = timeOut;
+	}
+
+	public void setReadTimeOut(int timeOut) {
+		mReadTimeOut = timeOut;
+	}
 
 	private URLConnection getConnection(String serverURL) throws IOException {
         URL urlServlet = new URL(serverURL);
@@ -65,8 +72,8 @@ public abstract class ClientCommunicator extends CommunicationHelper {
         con.setDoInput(true);
         con.setDoOutput(true);
         con.setUseCaches(false);
-		con.setConnectTimeout(CONNECT_TIME_OUT);
-		con.setReadTimeout(READ_TIME_OUT);
+		con.setConnectTimeout(mConnectTimeOut);
+		con.setReadTimeout(mReadTimeOut);
         con.setRequestProperty("User-Agent", "Mozilla/5.0");
         con.setRequestProperty("Content-Type", "application/x-java-serialized-object");
 
@@ -135,8 +142,6 @@ public abstract class ClientCommunicator extends CommunicationHelper {
 	            }
 
 			mSessionID = null;
-			System.runFinalization();
-					// supposed to call the unreferenced() method on the server object
 
 			showBusyMessage("");
 			}
@@ -175,10 +180,12 @@ public abstract class ClientCommunicator extends CommunicationHelper {
 					return response;
 				}
 			catch (ServerErrorException see) {  // server reached, but could not satisfy request
+				reportException(see);
 				showErrorMessage(see.getMessage());
 				return null;
 				}
 			catch (ConnectException ce) {  // connection refused
+				reportException(ce);
 				if (!mayUseSecondaryServer) {
 					showErrorMessage(ce.toString());
 					return null;
@@ -186,6 +193,7 @@ public abstract class ClientCommunicator extends CommunicationHelper {
 				showBusyMessage("Connection refused. Trying alternative server...");
 				}
 			catch (SocketTimeoutException ste) {  // timed out
+				reportException(ste);
 				if (!mayUseSecondaryServer) {
 					showErrorMessage(ste.toString());
 					return null;
@@ -193,6 +201,7 @@ public abstract class ClientCommunicator extends CommunicationHelper {
 				showBusyMessage("Connection timed out. Trying alternative server...");
 				}
 			catch (IOException ioe) {
+				reportException(ioe);
 				showErrorMessage(ioe.toString());
 				return null;
 				}
@@ -217,6 +226,11 @@ public abstract class ClientCommunicator extends CommunicationHelper {
 		showErrorMessage("No response from server.");
 		return null;
 		}
+
+	/**
+	 * Override this, if you need information about exceptions happening in the getResponse() method
+	 */
+	public void reportException(Exception e) {}
 
 	public Object getResponseWithURL(String serverURL, String request, String... keyValuePair) throws IOException {
 		if (mWithSessions && mSessionID == null) {

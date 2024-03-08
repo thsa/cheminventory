@@ -312,11 +312,11 @@ public class InventoryTask extends ServerTask implements ConfigurationKeys,Inven
 	private String getToken() {
 		String token = getRequestText(PARAMETER_TOKEN);
 		if (token == null) {
-			createErrorResponse("Missing token to change data.");
+			createErrorResponse("Missing token.");
 			return null;
 		}
 		if (!Authorizer.getInstance().isValidToken(token)) {
-			createErrorResponse("Invalid token.");
+			createErrorResponse(ERROR_INVALID_TOKEN);
 			return null;
 		}
 		return token;
