@@ -44,7 +44,7 @@ public class CompoundTable extends AlphaNumTable {
 	}
 
 	@Override
-	protected void addOptionalTableNamesToSQL(StringBuilder sql) {
+	protected void addDerivedColumnsToSQL(StringBuilder sql) {
 		sql.append(",");
 		sql.append(SELECT_COLUMNS);
 	}
@@ -71,15 +71,15 @@ public class CompoundTable extends AlphaNumTable {
 	}
 
 	@Override
+	public AlphaNumRow createRow() {
+		return new CompoundRow(getColumnCount());
+	}
+
+	@Override
 	protected AlphaNumRow createRow(ResultSet rset) throws SQLException {
-		CompoundRow row = new CompoundRow(getColumnCount());
+		CompoundRow row = (CompoundRow)super.createRow(rset);
 
-		int column = 0;
-		for (int i=0; i<getColumnCount(); i++) {
-			String s = rset.getString(++column);
-			row.setData(column-1, s == null ? null : s.getBytes());
-		}
-
+		int column = getColumnCount();
 		String idcode = rset.getString(++column);
 		String coords = rset.getString(++column);
 		String ffp = rset.getString(++column);

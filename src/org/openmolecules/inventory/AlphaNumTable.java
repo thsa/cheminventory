@@ -275,7 +275,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 			sql.append(mColumnName[i]);
 			}
 
-		addOptionalTableNamesToSQL(sql);
+		addDerivedColumnsToSQL(sql);
 
 		sql.append(" FROM ");
 		sql.append(mTableLongName);
@@ -501,7 +501,7 @@ public class AlphaNumTable implements ConfigurationKeys {
 		return "Error: Server engine cannot connect to database.";
 	}
 
-	protected void addOptionalTableNamesToSQL(StringBuilder sql) {
+	protected void addDerivedColumnsToSQL(StringBuilder sql) {
 	}
 
 	protected void addTableCreationSQLStructureColumns(StringBuilder script) {}
@@ -570,8 +570,12 @@ public class AlphaNumTable implements ConfigurationKeys {
 		return mRowList.get(i);
 	}
 
+	public AlphaNumRow createRow() {
+		return new AlphaNumRow(getColumnCount());
+	}
+
 	protected AlphaNumRow createRow(ResultSet rset) throws SQLException {
-		AlphaNumRow row = new AlphaNumRow(getColumnCount());
+		AlphaNumRow row = createRow();
 
 		for (int column=0; column<getColumnCount(); column++) {
 			String s = rset.getString(column+1);
@@ -581,7 +585,9 @@ public class AlphaNumTable implements ConfigurationKeys {
 					try {
 						row.setFloat(Float.parseFloat(s), column);
 					}
-					catch (NumberFormatException nfe) {}
+					catch (NumberFormatException nfe) {
+						row.setFloat(Float.NaN, column);
+					}
 				}
 			}
 		}
