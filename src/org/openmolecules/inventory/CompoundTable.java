@@ -18,9 +18,7 @@
 
 package org.openmolecules.inventory;
 
-import com.actelion.research.chem.IDCodeParser;
-import com.actelion.research.chem.MolecularFormula;
-import com.actelion.research.chem.StereoMolecule;
+import com.actelion.research.chem.*;
 import com.actelion.research.chem.descriptor.DescriptorHandlerLongFFP512;
 import com.actelion.research.chem.descriptor.DescriptorHandlerSkeletonSpheres;
 import com.actelion.research.util.ByteArrayComparator;
@@ -105,7 +103,18 @@ public class CompoundTable extends AlphaNumTable {
 			idcode = null;
 		if (coords != null && coords.isEmpty())
 			coords = null;
-		StereoMolecule mol = (idcode == null) ? null : new IDCodeParser().getCompactMolecule(idcode, coords);
+		StereoMolecule mol = null;
+		if (idcode != null) {
+			try {
+				mol = MoleculeStandardizer.getStandardized(idcode, coords, 0);
+				Canonizer canonizer = new Canonizer(mol);
+				idcode = canonizer.getIDCode();
+				coords = canonizer.getEncodedCoordinates();
+			}
+			catch (Exception e) {
+				mol = new IDCodeParser().getCompactMolecule(idcode, coords);
+			}
+		}
 		calculateMWAndMF(columnValueMap, mol);
 
 		boolean structureChanged = false;
@@ -125,8 +134,24 @@ public class CompoundTable extends AlphaNumTable {
 	@Override
 	protected String insertRow(TreeMap<String,String> columnValueMap, byte[][] newPrimaryKeyHolder) {
 		String idcode = columnValueMap.get("idcode");
+		String coords = columnValueMap.get("idcoords");
+		if (idcode != null && idcode.isEmpty())
+			idcode = null;
+		if (coords != null && coords.isEmpty())
+			coords = null;
 
 		if (mCheckNovelty && idcode != null) {
+			try {
+				StereoMolecule mol = MoleculeStandardizer.getStandardized(idcode, coords, 0);
+				Canonizer canonizer = new Canonizer(mol);
+				idcode = canonizer.getIDCode();
+				coords = canonizer.getEncodedCoordinates();
+			}
+			catch (Exception e) {
+				// We keep the non standardized version
+				//  return "Couldn't standardize molecule: "+idcode;
+			}
+
 			byte[] pk = mIDCodeToPKMap.get(idcode.getBytes());
 			if (pk != null) {
 				newPrimaryKeyHolder[0] = pk;
@@ -134,11 +159,6 @@ public class CompoundTable extends AlphaNumTable {
 			}
 		}
 
-		String coords = columnValueMap.get("idcoords");
-		if (idcode != null && idcode.isEmpty())
-			idcode = null;
-		if (coords != null && coords.isEmpty())
-			coords = null;
 		StereoMolecule mol = (idcode == null) ? null : new IDCodeParser().getCompactMolecule(idcode, coords);
 		calculateMWAndMF(columnValueMap, mol);
 
