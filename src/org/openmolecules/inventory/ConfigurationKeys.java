@@ -39,6 +39,8 @@ public interface ConfigurationKeys {
 	String DATABASE_PASSWORD = "db_password";
 	String ADMIN_USER = "admin_user";
 	String ADMIN_HASH = "admin_hash";
+	String CHECK_NOVELTY = "check_novelty";
+	String AUTO_COMPOUND_ID = "auto_compound_id";
 	String COMPOUND_TABLE = "compoundTable";
 	String BOTTLE_TABLE = "bottleTable";
 

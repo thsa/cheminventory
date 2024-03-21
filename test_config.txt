@@ -13,6 +13,17 @@ db_password = inventory
 # admin_user = admin
 # admin_hash = a25ce608f24415ae2
 
+# When registering new compound structures the server may make sure that the structure is not existing yet.
+# As default behaviour the server registers an already existing compound a second time issuing a new row ID.
+# If the server shall prevent duplicate structures and shall return an existing row-ID instead of generating
+# new row when a duplicate compound is added, then set the 'check_novelty' flag to 'true'.
+# check_novelty = true
+
+# If the compound table contains a column with type [id], i.e. a unique number per compound, visible to
+# the user, and if the 'auto_compound_id' is defined, then the server generates an automatic compound ID
+# for every new compound row using increasing numbers put into the given format.
+# auto_compound_id = ABC-0000-0000
+
 # The server engine keeps all chemical structure information in memory to allow for fast structure searches.
 # Alphanumerical column data is also kept in memory, if it shall be retrievable or usable for queries.
 # The following comma separated list starts with the display name and the SQL table name of the compound table.

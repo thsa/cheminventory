@@ -52,9 +52,9 @@ public class CompoundRow extends AlphaNumRow {
 
 	public void setStructure(String idcode, String coords, long[] ffp, String encodedFFP, String encodedSkelSpheres) {
 		mIDCode = (idcode == null || idcode.isEmpty()) ? null : idcode.getBytes();
-		mCoords = (mIDCode == null || coords == null || coords.isEmpty()) ? null : coords.getBytes();
-		mFFPBytes = (mIDCode == null || encodedFFP == null || encodedFFP.isEmpty()) ? null : encodedFFP.getBytes();
-		mFFP = (mIDCode == null) ? null : ffp != null ? ffp : encodedFFP != null && !encodedFFP.isEmpty() ? DescriptorHandlerLongFFP512.getDefaultInstance().decode(encodedFFP) : null;
-		mSkelSpheres = (mIDCode == null || encodedSkelSpheres == null || encodedSkelSpheres.isEmpty()) ? null : DescriptorHandlerSkeletonSpheres.getDefaultInstance().decode(encodedSkelSpheres);
+		mCoords = (idcode == null || coords == null || coords.isEmpty()) ? null : coords.getBytes();
+		mFFPBytes = (idcode == null || encodedFFP == null || encodedFFP.isEmpty()) ? null : encodedFFP.getBytes();
+		mFFP = (idcode == null) ? null : ffp != null ? ffp : encodedFFP != null && !encodedFFP.isEmpty() ? DescriptorHandlerLongFFP512.getDefaultInstance().decode(encodedFFP) : null;
+		mSkelSpheres = (idcode == null || encodedSkelSpheres == null || encodedSkelSpheres.isEmpty()) ? null : DescriptorHandlerSkeletonSpheres.getDefaultInstance().decode(encodedSkelSpheres);
 	}
 }

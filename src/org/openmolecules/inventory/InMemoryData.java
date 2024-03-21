@@ -25,7 +25,7 @@ import com.actelion.research.chem.descriptor.DescriptorConstants;
 import java.util.Properties;
 
 public class InMemoryData implements ConfigurationKeys,StructureSearchDataSource {
-	private Properties mConfig;
+	private final Properties mConfig;
 	private AlphaNumTable mBottleTable;
 	private CompoundTable mCompoundTable;
 	private AlphaNumTable[] mAllTables; // includes mCompoundTable and mBottleTable at the end
@@ -58,18 +58,18 @@ public class InMemoryData implements ConfigurationKeys,StructureSearchDataSource
 
 	private boolean initialize() {
 		String compoundDef = mConfig.getProperty(COMPOUND_TABLE);
-		if (compoundDef == null || compoundDef.length() == 0) {
+		if (compoundDef == null || compoundDef.isEmpty()) {
 			System.out.println("'"+COMPOUND_TABLE+"' missing in config file.");
 			return false;
 		}
 		String bottleDef = mConfig.getProperty(BOTTLE_TABLE);
-		if (bottleDef == null || bottleDef.length() == 0) {
+		if (bottleDef == null || bottleDef.isEmpty()) {
 			System.out.println("'"+BOTTLE_TABLE+"' missing in config file.");
 			return false;
 		}
 		int supportTableCount;
 		String supportTableCountText = mConfig.getProperty(SUPPORT_TABLES_COUNT);
-		if (supportTableCountText == null || supportTableCountText.length() == 0) {
+		if (supportTableCountText == null || supportTableCountText.isEmpty()) {
 			System.out.println("'" + SUPPORT_TABLES_COUNT + "' missing in config file.");
 			return false;
 		}
@@ -84,13 +84,13 @@ public class InMemoryData implements ConfigurationKeys,StructureSearchDataSource
 		for (int i=0; i<supportTableCount; i++) {
 			String key = SUPPORT_TABLE+(i+1);
 			supportTableDef[i] = mConfig.getProperty(key);
-			if (supportTableDef[i] == null || supportTableDef[i].length() == 0) {
+			if (supportTableDef[i] == null || supportTableDef[i].isEmpty()) {
 				System.out.println("'"+key+"' missing in config file.");
 				return false;
 			}
 		}
 
-		mCompoundTable = new CompoundTable();
+		mCompoundTable = new CompoundTable("true".equals(mConfig.getProperty(CHECK_NOVELTY)), mConfig.getProperty(AUTO_COMPOUND_ID));
 		if (!mCompoundTable.initialize(compoundDef)) {
 			System.out.println("Could not initialize compound table. Check config!");
 			return false;
