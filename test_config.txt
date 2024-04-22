@@ -3,7 +3,7 @@
 ####################################################################################################
 
 # The connect string, database name, user & password for READ access to the SQL database
-connectString = mysql://localhost/cheminventory
+connectString = mysql://localhost/cheminventory?serverTimezone=Europe/Berlin
 db_name = cheminventory
 db_user = inventory
 db_password = inventory
