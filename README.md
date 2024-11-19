@@ -13,7 +13,7 @@ a 1-to-N relationship from the latter to the former. Therefore, the *create_db.s
 supplied test data are just examples of a possible table structure.
 
 When up and running, *ChemInventory* server listens on a dedicated port for HTTP based search requests.
-It can be be used as virtual host of a web server to be accessible under a web-server subdomain
+It can be used as virtual host of a web server to be accessible under a web-server subdomain
 (e.g. https://cheminventory.organisation.org).
 *ChemInventory* is meant to work in combination with a Web-based and/or Java-based front end
 application that let's end users store, edit and search bottles of chemicals. These client
