@@ -80,7 +80,10 @@ public abstract class ClientCommunicator extends CommunicationHelper {
         if (mWithSessions && mSessionID != null)
             con.addRequestProperty(KEY_SESSION_ID, mSessionID);
 
-        return con;
+		// we want error messages to be returned with HTTP code 200
+		con.addRequestProperty(KEY_ERROR_200, "true");
+
+		return con;
         }
 
 	private void convertToPostRequest(HttpURLConnection con, String request, String... keyValuePair) throws IOException {
